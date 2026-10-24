@@ -202,9 +202,9 @@ static func choose(g, advanced: bool = false) -> String:
  _sort(moves,"deep_value")
  return moves[0].dir
 
-static func choose_async(g, advanced: bool, tree: SceneTree) -> String:
+static func choose_async(g, advanced: bool, tree: SceneTree, cancelled: Callable = Callable()) -> String:
  # The same search as choose(), divided across frames so Stop and menus respond.
- if g.phase!="play" or g.jammed: return ""
+ if _is_cancelled(cancelled) or g.phase!="play" or g.jammed: return ""
  var anchor: int = corner(g.cells)
  var moves: Array = _moves(g,anchor)
  if moves.is_empty(): return ""
@@ -213,8 +213,10 @@ static func choose_async(g, advanced: bool, tree: SceneTree) -> String:
   _sort(wins,"terminal")
   return wins[0].dir
  for step in moves:
+  if _is_cancelled(cancelled): return ""
   step.search_value=expected(step,anchor)
   await tree.process_frame
+  if _is_cancelled(cancelled): return ""
  _sort(moves,"search_value")
  if not advanced: return moves[0].dir
  var parts: Array = []
@@ -233,12 +235,17 @@ static func choose_async(g, advanced: bool, tree: SceneTree) -> String:
   var worst := INF
   var slice_start: int = Time.get_ticks_msec()
   for index in range(16):
+   if _is_cancelled(cancelled): return ""
    var value: float = rollout(step,anchor,(seed_value+(index+1)*0x9e3779b9)&RunRng.MASK,index%4==3)
    total+=value
    worst=minf(worst,value)
    if Time.get_ticks_msec()-slice_start>=6:
     await tree.process_frame
+    if _is_cancelled(cancelled): return ""
     slice_start=Time.get_ticks_msec()
   step.deep_value=step.search_value*.3+(.9*total/16+.1*worst)*.7
  _sort(moves,"deep_value")
  return moves[0].dir
+
+static func _is_cancelled(callback: Callable) -> bool:
+ return callback.is_valid() and bool(callback.call())

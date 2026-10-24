@@ -8,6 +8,6 @@
 
 `regression.gd` also checks native/legacy save import, invalid-save protection, card targeting, sales, retries, board downsides, the requested automation price, RNG isolation, and asynchronous search parity.
 
-`ui_smoke.gd` builds every board/reward/shop/pack view and the help, settings, collection, and save dialogs. It verifies automatic input actually advances the run.
+`ui_smoke.gd` instantiates the composed main scene and every board/reward/shop/pack view, plus help, settings, collection, and save overlays. It verifies title/font/card bounds, the shop position below the owned rack, input buffering, persistent UI nodes, tile settling, animation cancellation, touch and controller input routing, Relic ordering, autoplay cancellation, and reduced motion.
 
 Tests are excluded from the exported game.

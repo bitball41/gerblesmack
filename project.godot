@@ -2,16 +2,24 @@ config_version=5
 
 [application]
 config/name="GATEFOLD"
+config/icon="res://assets/app_icon.svg"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.06, 0.16, 0.20, 1)
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [display]
-window/size/viewport_width=1280
-window/size/viewport_height=800
+window/size/viewport_width=1440
+window/size/viewport_height=900
 window/stretch/mode="canvas_items"
+window/size/window_width_override=1280
+window/size/window_height_override=800
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 environment/defaults/default_clear_color=Color(0.055, 0.12, 0.145, 1)
+
+[gui]
+timers/tooltip_delay_sec=0.2

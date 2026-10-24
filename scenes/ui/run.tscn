@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="Script" path="res://ui/run_view.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/board.tscn" id="2"]
+[node name="Run" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+[node name="Board" parent="." instance=ExtResource("2")]
+[node name="RelicRack" type="Control" parent="."]
+offset_left = 294.0
+offset_top = 58.0
+offset_right = 1121.0
+offset_bottom = 230.0
+mouse_filter = 1
+[node name="Pocket" type="Control" parent="."]
+offset_left = 1165.0
+offset_top = 58.0
+offset_right = 1406.0
+offset_bottom = 230.0
+mouse_filter = 1

@@ -1,0 +1,19 @@
+Font metadata retained from the embedded WOFF files in the supplied Gatefold HTML reference.
+
+body.ttf
+========
+Copyright:
+(URW)++,Copyright 2014 by (URW)++ Design & Development
+
+
+body_bold.ttf
+=============
+Copyright:
+(URW)++,Copyright 2014 by (URW)++ Design & Development
+
+
+display.ttf
+===========
+Copyright:
+(URW)++,Copyright 2014 by (URW)++ Design & Development
+

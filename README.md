@@ -1,30 +1,32 @@
 # GATEFOLD
 
-A native Godot 4.5 Web port of the 2048 roguelike. Choose from 15 boards, build a Relic engine, clear eight floors, and continue in endless.
+A native Godot Web 2048 roguelike: choose from 15 boards, build a Relic engine, clear eight floors, then continue in endless.
 
-Development order: gameplay conversion → visual polish → Fracture content update.
-
-GitHub Actions runs regression tests and exports the game for GitHub Pages. No local Godot installation is required to play or deploy.
-
-Enable hosting once in **Settings → Pages → Source → GitHub Actions**, then rerun the deployment. After that, pushing to main publishes the new build automatically.
+The original illustrated interface, embedded fonts, card artwork, and tile colors are recreated with reusable Godot scenes. Tiles slide and pop, Relics pulse in scoring order, score gains float, and sounds scale with events. Keyboard input buffers through animation. Reduced motion is available in Settings.
 
 ## Controls
 
-- WASD, arrow keys, or swipe to slide.
-- Space toggles purchased autoplay; manual movement stops it.
-- Escape cancels a Spell target or returns to the menu.
-- Relic arrows change scoring order. Hover to inspect effects.
-- Settings includes sound, fullscreen, autoplay speed, and save export. Import native or legacy HTML save JSON from the main menu.
+- WASD, arrow keys, mouse/touch swipe, or controller D-pad/left stick to slide.
+- Space toggles purchased autoplay. Manual input stops it.
+- Escape cancels a Spell target or opens the menu.
+- Drag Relics to change scoring order; inspector arrow buttons and Alt+Left/Right are also supported.
+- Click a pocket card to inspect/use/sell it. Duplicate asks for a source, then an empty destination.
+- Settings controls sound, motion, automation speed, fullscreen, and save import/export.
 
-## Development
+Runs save automatically. Native saves and exported JSON from the original HTML game are supported.
 
-Use Godot 4.5.2 (standard GDScript build, GL Compatibility).
+## Development and publishing
+
+Use Godot 4.5.2, standard GDScript build with GL Compatibility.
 
 ```sh
 godot --headless --path . --import
 godot --headless --path . --script tests/regression.gd
 godot --headless --path . --script tests/ui_smoke.gd
 godot --headless --path . --export-release Web build/web/index.html
+python3 tools/prepare_web.py build/web
 ```
 
-See [migration notes](docs/PORTING.md) and [test provenance](tests/README.md).
+GitHub Actions runs both suites and publishes passing builds to GitHub Pages. No editor installation is required to play or deploy.
+
+See [migration and scene notes](docs/PORTING.md), [asset provenance](assets/README.md), and [test provenance](tests/README.md). The Fracture content update is a separate next phase.

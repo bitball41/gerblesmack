@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: gatefold-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
           mkdir -p build/web
           godot --headless --path . --export-release Web build/web/index.html
           test -s build/web/index.html
-          touch build/web/.nojekyll
+          python3 tools/prepare_web.py build/web
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
