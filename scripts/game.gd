@@ -235,7 +235,7 @@ func score_merges(events: Array, previous_highest: int) -> Dictionary:
  for ei in range(events.size()):
   var ev: Dictionary = events[ei]
   var t: Dictionary = ev.tile
-  var eligible := not (gate==2 and guardian().id=="largest" and t.e != max_e)
+  var eligible: bool = not (gate==2 and guardian().id=="largest" and t.e != max_e)
   if t.fx.get("gold",false):
    earn(4.0 if has_relic("greed") else 2.0)
   var points := 0.0
@@ -384,7 +384,7 @@ func _random_relic() -> String:
  var available: Array = []
  for id in Cat.RELICS:
   if has_relic(id): continue
-  var rarity := Cat.RELICS[id].rarity
+  var rarity: String = Cat.RELICS[id].rarity
   var weight := 60 if rarity == "Common" else 32 if rarity == "Uncommon" else 8
   for _i in range(weight):
    available.append(id)
