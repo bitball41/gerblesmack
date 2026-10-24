@@ -290,7 +290,7 @@ func _show_shop(side: VBoxContainer) -> void:
   holder.add_child(_button("$%d" % g.cost_for(id),func(item=id): _buy(item),g.money >= g.cost_for(id)))
  if g.shop_upgrade != "":
   side.add_child(_label("UPGRADE",13,GOLD))
-  var id := g.shop_upgrade
+  var id: String = g.shop_upgrade
   var u: Dictionary = Cat.UPGRADES[id]
   side.add_child(_label(Cat.name_for(id)+" — "+u.get("desc",""),14,DIM))
   side.add_child(_button("BUY UPGRADE · $%d" % g.cost_for(id),func(item=id): _buy(item),g.money >= g.cost_for(id)))
