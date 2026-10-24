@@ -18,6 +18,7 @@ var wallet: Control
 var offers: Array[Dictionary] = []
 var _next_round: Button
 var _reroll: Button
+var _heal: Button
 var _specials: Control
 var _special_signature := ""
 var _sources: Dictionary = {}
@@ -27,25 +28,23 @@ func _ready() -> void:
  mouse_filter=Control.MOUSE_FILTER_STOP
  resized.connect(func():
   if is_instance_valid(_specials): _specials.position.y=size.y-174
-  if is_instance_valid(_next_round): _next_round.position.y=size.y-126
-  if is_instance_valid(_reroll): _reroll.position.y=size.y-126
  )
  wallet=WALLET.instantiate()
  wallet.visible=false
  add_child(wallet)
- _next_round=_button("Next\nround",Rect2(20,454,144,108),func(): next_requested.emit(),Color("bd594c"),null,30)
- _reroll=_button("Reroll\n$3",Rect2(180,454,144,108),func(): reroll_requested.emit(),Color("328a69"),null,30)
+ _next_round=_button("Next\nround",Rect2(20,36,144,90),func(): next_requested.emit(),Color("bd594c"),null,30)
+ _reroll=_button("Reroll\n$3",Rect2(20,146,144,90),func(): reroll_requested.emit(),Color("328a69"),null,30)
  _specials=Control.new()
- UIStyle.place(_specials,self,Rect2(340,406,432,156))
+ UIStyle.place(_specials,self,Rect2(20,406,808,156))
  for index in range(4):
   var slot := Control.new()
-  UIStyle.place(slot,self,Rect2(20+index*188,28,164,330))
+  UIStyle.place(slot,self,Rect2(192+index*160,28,144,330))
   offers.append({"id":"__unset","root":slot,"buy":null,"card":null})
 
 func _draw() -> void:
  # A single recessed tray, with quiet table around every card.
- draw_rect(Rect2(12,12,756,344),Color("172b3350"))
- draw_rect(Rect2(20,382,752,2),Color("78928a65"))
+ draw_rect(Rect2(180,12,648,344),Color("172b3350"))
+ draw_rect(Rect2(20,382,808,2),Color("78928a65"))
 
 func _text(text: String, rect: Rect2, font_size: int, color: Color = UIStyle.CREAM, parent: Node = null, wrap: bool = false) -> Label:
  var label: Label = UIStyle.label(text,font_size,color,true,wrap)
@@ -81,6 +80,7 @@ func sync(game: Game) -> void:
  if signature!=_special_signature:
   _fill_specials(game)
   _special_signature=signature
+ if is_instance_valid(_heal): _heal.disabled=game.money.cmp(game.price(5))<0
  for child in _specials.find_children("*","Button",true,false):
   var id: String = str(child.get_meta("purchase_id",""))
   var cost: int = int(child.get_meta("cost",0))
@@ -105,13 +105,13 @@ func _fill_offer(index: int, id: String) -> void:
  card.item_id=id
  card.motion_enabled=motion_enabled
  card.custom_minimum_size=Vector2.ZERO
- UIStyle.place(card,root,Rect2(0,46,164,192))
+ UIStyle.place(card,root,Rect2(0,46,144,192))
  card.inspected.connect(func(_item: String): _select_offer(index))
  slot.card=card
- var price: Label = _text("",Rect2(0,2,164,38),30,UIStyle.GOLD,root)
+ var price: Label = _text("",Rect2(0,2,144,38),30,UIStyle.GOLD,root)
  price.name="Price"
  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- slot.buy=_button("BUY",Rect2(0,262,164,46),func(): buy_requested.emit(id),Color("328a69"),root,20)
+ slot.buy=_button("BUY",Rect2(0,262,144,46),func(): buy_requested.emit(id),Color("328a69"),root,20)
  slot.buy.name="Buy"+id.capitalize()
  slot.buy.visible=false
  if motion_enabled:
@@ -119,12 +119,14 @@ func _fill_offer(index: int, id: String) -> void:
   card.create_tween().tween_property(card,"modulate:a",1.0,.16).set_delay(index*.035)
 
 func _fill_specials(game: Game) -> void:
+ if is_instance_valid(_heal): remove_child(_heal); _heal.queue_free()
+ _heal=null
  for child in _specials.get_children(): _specials.remove_child(child); child.queue_free()
  _sources.clear()
- _text("Floor %d upgrade" % game.floor_num,Rect2(0,0,252,40),15,UIStyle.MUTED,_specials)
+ _text("Floor %d upgrade" % game.floor_num,Rect2(0,0,300,40),15,UIStyle.MUTED,_specials)
  if game.shop_upgrade!="":
   var id: String = game.shop_upgrade
-  var ticket: Button = _button("",Rect2(0,48,252,108),func(): upgrade_inspected.emit(id,_sources[id]),Color("8f7446"),_specials,32,true)
+  var ticket: Button = _button("",Rect2(0,48,300,108),func(): upgrade_inspected.emit(id,_sources[id]),Color("8f7446"),_specials,32,true)
   ticket.set_meta("purchase_id",id)
   ticket.set_meta("cost",game.cost_for(id))
   ticket.set_meta("item_id",id)
@@ -137,20 +139,20 @@ func _fill_specials(game: Game) -> void:
   var words: PackedStringArray = title.split(" ")
   if words.size()>=3 and words[-1] in ["I","II","III"]:
    title=" ".join(words.slice(0,words.size()-2))+"\n"+" ".join(words.slice(words.size()-2))
-  _text(title,Rect2(66,4,176,64),32,UIStyle.CREAM,ticket,true)
-  _text("$%d" % game.cost_for(id),Rect2(66,72,176,36),32,UIStyle.CREAM,ticket)
+  _text(title,Rect2(66,4,224,64),32,UIStyle.CREAM,ticket,true)
+  _text("$%d" % game.cost_for(id),Rect2(66,72,224,36),32,UIStyle.CREAM,ticket)
   _sources[id]=ticket
  else: _text("REDEEMED",Rect2(12,84,228,36),20,Color("7f9a8e"),_specials)
- _text("Supply pack",Rect2(268,0,164,40),15,UIStyle.MUTED,_specials)
+ _text("Supply pack",Rect2(576,0,232,40),15,UIStyle.MUTED,_specials)
  if not game.shop_pack_bought:
   var cost: int = 0 if game.b().get("free_packs",false) else game.price(5)
-  var open: Button = _button("Open\n$%d" % cost,Rect2(268,48,164,108),func(): pack_requested.emit(),Color("6e598d"),_specials,20)
+  var open: Button = _button("Open\n$%d" % cost,Rect2(576,48,232,108),func(): pack_requested.emit(),Color("6e598d"),_specials,20)
   open.set_meta("cost",cost)
   _sources["pack"]=open
- else: _text("OPENED",Rect2(276,84,156,36),20,Color("7f9a8e"),_specials)
+ else: _text("OPENED",Rect2(584,84,224,36),20,Color("7f9a8e"),_specials)
  if game.hp<game.max_hp and not game.shop_heal_bought:
-  var heal: Button = _button("Heal  $%d" % game.price(5),Rect2(-320,0,304,42),func(): heal_requested.emit(),Color("9a5665"),_specials,32)
-  heal.set_meta("cost",game.price(5))
+  _heal=_button("Heal\n$%d" % game.price(5),Rect2(20,256,144,90),func(): heal_requested.emit(),Color("9a5665"),self,32)
+  _heal.set_meta("cost",game.price(5))
 
 
 func source_rect(id: String) -> Rect2:

@@ -52,6 +52,8 @@ var _sidebar_bottom: Array[Control] = []
 var _sidebar_play: Array[CanvasItem] = []
 var _phase_heading: Label
 var _balance_heading: Label
+var board_button: Button
+var _board_note: Label
 var _controls_hint: Label
 @onready var board: Control = $Board
 @onready var rack: Control = $RelicRack
@@ -157,6 +159,14 @@ func _build() -> void:
  sound_icon=UIStyle.texture("ui_sound")
  sound_icon.visible=false
  add_child(sound_icon)
+ board_button=_button("Board",Rect2(1180,774,224,108),"board",Color("345966"),Color("7b9eaa"),36)
+ board_button.name="ViewBoard"
+ board_button.expand_icon=true
+ board_button.add_theme_constant_override("icon_max_width",64)
+ _board_note=_text("",Rect2(1180,726,224,40),36,UIStyle.MUTED)
+ _board_note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+ board_button.hide()
+ _board_note.hide()
  _built=true
 
 func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: int = 1, target_text: String = "") -> void:
@@ -172,6 +182,10 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  wallet.position.y=624 if in_play else 388
  _seed.visible=in_play
  _controls_hint.visible=in_play
+ board_button.visible=game.phase=="shop"
+ _board_note.visible=board_button.visible
+ board_button.icon=UIStyle.sprite("board_"+game.board_id)
+ _board_note.text=game.b().name
  _upgrade_zone.visible=not game.upgrades.is_empty()
  _controls_hint.text="CLICK A CARD TO SELECT" if game.phase=="shop" else "WASD / ARROWS / SWIPE"
  var target = game.target()
@@ -344,6 +358,8 @@ static func live_state(game: Game, relic: Dictionary) -> String:
 func adapt_canvas(dimensions: Vector2) -> void:
  if not _built: return
  _sidebar_background.size.y=dimensions.y
+ board_button.position=Vector2(dimensions.x-260,dimensions.y-126)
+ _board_note.position=Vector2(dimensions.x-260,dimensions.y-174)
  for control in _sidebar_bottom:
   if not control.has_meta("original_y"): control.set_meta("original_y",control.position.y)
   control.position.y=float(control.get_meta("original_y"))+dimensions.y-900

@@ -222,6 +222,7 @@ func _run_action(action: String) -> void:
  effects.play("click")
  match action:
   "menu": _show_settings()
+  "board": _show_board()
   "new": _show_new_run()
   "help": _show_help()
   "phase":
@@ -497,13 +498,13 @@ func _show_shop() -> void:
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
- var host: Control = overlay.open_custom("shop",_table_size(),true,320)
+ var host: Control = overlay.open_custom("shop",_shop_size(),true,320)
  overlay.panel.position.x=288
  _shop_shade()
  shop_view=SHOP_SCENE.instantiate()
  shop_view.motion_enabled=not reduced_motion
  host.add_child(shop_view)
- shop_view.size=_table_size()
+ shop_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  shop_view.buy_requested.connect(_buy)
  shop_view.item_inspected.connect(_inspect_offer)
  shop_view.upgrade_inspected.connect(_inspect_upgrade)
@@ -517,8 +518,8 @@ func _shop_shade() -> void:
  overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
  var shade: ColorRect = overlay.get_child(0)
  shade.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
- shade.position=Vector2(252,308)
- shade.size=Vector2(size.x-252,size.y-308)
+ shade.position=Vector2(252,308) if overlay.view_id=="gates" else Vector2(288,320)
+ shade.size=Vector2(size.x-252,size.y-308) if overlay.view_id=="gates" else _shop_size()
  shade.color=Color("10262e45")
 
 func _buy(id: String) -> bool:
@@ -539,7 +540,8 @@ func _buy(id: String) -> bool:
 func _reroll_shop() -> void:
  if not g.reroll(): _toast("Not enough money to reroll."); return
  effects.play("shuffle")
- effects.coin_stream(run_view.wallet.position+Vector2(36,28),Vector2(942,340),5)
+ var destination: Vector2 = _local_rect(shop_view._reroll.get_global_rect()).get_center()
+ effects.coin_stream(run_view.wallet.position+Vector2(36,28),destination,5)
  _refresh_run(false)
  _show_shop()
 
@@ -552,8 +554,9 @@ func _open_shop_pack() -> void:
 func _heal_shop() -> void:
  if not g.heal_shop(): _toast("Not enough money to heal."); return
  effects.play("buy")
- effects.number_popup(Vector2(202,646),"+1 LIFE",UIStyle.RED)
- effects.burst(Vector2(192,650),UIStyle.RED,8)
+ var destination: Vector2 = _local_rect(run_view._hearts.get_global_rect()).get_center()
+ effects.number_popup(destination,"+1 LIFE",UIStyle.RED)
+ effects.burst(destination,UIStyle.RED,8)
  _refresh_run(false)
  _show_shop()
 
@@ -577,7 +580,7 @@ func _show_pack() -> void:
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
- var host: Control = overlay.open_custom("pack",_table_size(),false,320)
+ var host: Control = overlay.open_custom("pack",_shop_size(),false,320)
  overlay.panel.position.x=288
  _shop_shade()
  var pack: Control = PACK_SCENE.instantiate()
@@ -585,7 +588,7 @@ func _show_pack() -> void:
  pack.motion_enabled=not reduced_motion
  for id in pack.choices: pack.available[id]=g.can_grant(id)
  host.add_child(pack)
- pack.size=_table_size()
+ pack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  pack.picked.connect(_pick_pack)
  pack.item_inspected.connect(func(id: String, source: Control): _inspect_pack(id,source,pack))
  pack.skipped.connect(func(): g.pack_choices=[]; g.save_run(); _show_shop())
@@ -606,14 +609,16 @@ func _show_new_run() -> void:
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
+ _clear_context()
  var host: Control = overlay.open_custom("new",Vector2(1240,790),true,55)
+ overlay.panel.add_theme_stylebox_override("panel",UIStyle.box(Color("17373ef5"),Color("4a696b"),0,0,0))
  run_selector=RUN_SELECT_SCENE.instantiate()
  run_selector.chosen_board=chosen_board
  run_selector.page=board_page
  run_selector.seed_text=seed_input
  run_selector.motion_enabled=not reduced_motion
  host.add_child(run_selector)
- run_selector.size=Vector2(1240,790)
+ run_selector.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  run_selector.board_selected.connect(func(id: String): chosen_board=id)
  run_selector.page_changed.connect(func(index: int): board_page=index)
  run_selector.seed_changed.connect(func(value: String): seed_input=value)
@@ -815,13 +820,13 @@ func _dock(id: String, source: Control, live: String = "", pinned: bool = false)
  var data: Dictionary = Cat.data_for(id)
  if pinned: _context_source=weakref(source)
  else: _preview_source=weakref(source)
- context_panel=UIStyle.panel(Color("23343c"),UIStyle.GOLD,8)
+ context_panel=UIStyle.panel(Color("23343c"),UIStyle.GOLD,6)
  context_panel.name="SelectedItem" if pinned else "ItemPreview"
  context_panel.z_index=100
  context_panel.mouse_filter=Control.MOUSE_FILTER_STOP if pinned else Control.MOUSE_FILTER_IGNORE
  add_child(context_panel)
  _position_context()
- context_panel.size=Vector2(346,0)
+ context_panel.size=Vector2(300,0)
  var col: VBoxContainer = UIStyle.column(10)
  context_panel.add_child(col)
  col.add_child(UIStyle.item_tooltip(data.name,data.desc,data.rarity,live))
@@ -919,7 +924,7 @@ func _show_gates() -> void:
  gate_selector.retry=not g.pending_outcome
  gate_selector.motion_enabled=not reduced_motion
  host.add_child(gate_selector)
- gate_selector.size=_table_size()
+ gate_selector.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  gate_selector.enter_requested.connect(_begin_gate)
 
 func _begin_gate() -> void:
@@ -933,6 +938,9 @@ func _begin_gate() -> void:
 func _local_rect(rect: Rect2) -> Rect2:
  return Rect2(get_global_transform().affine_inverse()*rect.position,rect.size/scale)
 
+func _shop_size() -> Vector2:
+ return Vector2(848,size.y-320)
+
 func _table_size() -> Vector2:
  return Vector2(size.x-288,size.y-320)
 
@@ -942,12 +950,13 @@ func _layout_canvas() -> void:
  if is_instance_valid(context_panel): _position_context()
  if overlay.visible and overlay.view_id in ["shop","pack","gates"]:
   overlay.panel.position=Vector2(288,320)
-  overlay.panel.size=_table_size()
+  var dimensions: Vector2 = _table_size() if overlay.view_id=="gates" else _shop_size()
+  overlay.panel.size=dimensions
   var custom: Control = overlay.panel.get_node_or_null("CustomView")
   if custom and custom.get_child_count()>0:
    var view: Control = custom.get_child(0)
-   view.size=_table_size()
-   if overlay.view_id=="gates": view.adapt_canvas(_table_size())
+   view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+   if overlay.view_id=="gates": view.adapt_canvas(view.size)
   _shop_shade()
 
 func _process(_delta: float) -> void:
@@ -971,3 +980,37 @@ func _position_context() -> void:
 func _ignore_preview_input(node: Node) -> void:
  if node is Control: node.mouse_filter=Control.MOUSE_FILTER_IGNORE
  for child in node.get_children(): _ignore_preview_input(child)
+
+func _show_board() -> void:
+ if not has_run: return
+ var col: VBoxContainer = _open("Current board","board",Vector2(1080,600))
+ _inspector_return="shop" if g.phase=="shop" else ""
+ var row: HBoxContainer = UIStyle.row(32)
+ col.add_child(row)
+ var grid: Control = preload("res://scenes/ui/board.tscn").instantiate()
+ grid.name="CurrentBoardGrid"
+ grid.decorative=true
+ grid.motion_enabled=false
+ grid.custom_minimum_size=Vector2(416,416)
+ grid.size_flags_vertical=Control.SIZE_SHRINK_CENTER
+ row.add_child(grid)
+ grid.show_cells(g.cells)
+ var info: VBoxContainer = UIStyle.column(16)
+ info.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+ row.add_child(info)
+ var heading: HBoxContainer = UIStyle.row(20)
+ info.add_child(heading)
+ var art: TextureRect = UIStyle.texture("board_"+g.board_id)
+ art.custom_minimum_size=Vector2(96,120)
+ heading.add_child(art)
+ var title: Label = UIStyle.label(g.b().name,54,UIStyle.CREAM,true)
+ title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+ title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+ heading.add_child(title)
+ info.add_child(_paragraph(g.b().headline,UIStyle.GREEN,36))
+ info.add_child(_paragraph(g.b().desc,UIStyle.CREAM,36))
+ if g.b().has("downside"): info.add_child(_paragraph(g.b().downside,UIStyle.RED,36))
+ var back: Button = _button("Back to pack" if not g.pack_choices.is_empty() else "Back to shop" if g.phase=="shop" else "Back to game",_close_overlay)
+ back.custom_minimum_size.x=260
+ back.size_flags_horizontal=Control.SIZE_SHRINK_END
+ col.add_child(back)

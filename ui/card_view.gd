@@ -81,7 +81,10 @@ func _layout() -> void:
  title.max_lines_visible=2
  title.clip_text=true
  title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
- title.add_theme_font_size_override("font_size",36)
+ var name_size := 36
+ for word in title.text.split(" "):
+  if UIStyle.BODY.get_string_size(word,HORIZONTAL_ALIGNMENT_LEFT,-1,36).x>size.x-8: name_size=27
+ title.add_theme_font_size_override("font_size",name_size)
  title.position=Vector2(4,art_size+10)
  title.size=Vector2(size.x-8,size.y-art_size-18)
  queue_redraw()

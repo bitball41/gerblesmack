@@ -130,22 +130,22 @@ static func precise(value) -> String:
  return str(snappedf(n.to_float(),.001)) if n.e<5 else n.fmt()
 
 static func item_tooltip(title_text: String, description: String, rarity: String, live: String = "", _native_popup: bool = false) -> PanelContainer:
- var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),16)
+ var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),12)
  result.name="ItemTooltip"
- result.custom_minimum_size.x=330
- var body: VBoxContainer = column(12)
+ result.custom_minimum_size.x=288
+ var body: VBoxContainer = column(8)
  result.add_child(body)
- var title_label: Label = label(title_text,54,Color("22343c"),true,true)
- title_label.custom_minimum_size.x=298
+ var title_label: Label = label(title_text,36,Color("22343c"),true,true)
+ title_label.custom_minimum_size.x=264
  body.add_child(title_label)
  var desc := RichTextLabel.new()
  desc.bbcode_enabled=true
  desc.fit_content=true
  desc.scroll_active=false
  desc.mouse_filter=Control.MOUSE_FILTER_IGNORE
- desc.custom_minimum_size.x=298
+ desc.custom_minimum_size.x=264
  desc.add_theme_font_override("normal_font",BODY)
- desc.add_theme_font_size_override("normal_font_size",36)
+ desc.add_theme_font_size_override("normal_font_size",27)
  desc.add_theme_color_override("default_color",Color("38464b"))
  desc.add_theme_constant_override("line_separation",2)
  var regex := RegEx.new()
@@ -153,12 +153,14 @@ static func item_tooltip(title_text: String, description: String, rarity: String
  desc.text=regex.sub(readable(description),"[color=#a23c42]$1[/color]",true)
  body.add_child(desc)
  if not live.is_empty():
-  var state: PanelContainer = panel(Color("243a43"),Color("49666b"),8)
+  var state: PanelContainer = panel(Color("243a43"),Color("49666b"),7)
   var text: Label = label(live,32,GOLD,false,true)
-  text.custom_minimum_size.x=282
+  text.custom_minimum_size.x=250
+  text.add_theme_font_size_override("font_size",27)
   state.add_child(text)
   body.add_child(state)
  var badge: Label = label(rarity,32,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("986047"),true)
+ badge.add_theme_font_size_override("font_size",27)
  body.add_child(badge)
  return result
 

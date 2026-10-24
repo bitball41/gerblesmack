@@ -12,13 +12,13 @@ var motion_enabled := true
 func _ready() -> void:
  var title: Label = UIStyle.label("SUPPLY PACK",30,UIStyle.GOLD,true)
  title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- UIStyle.place(title,self,Rect2(20,26,744,42))
+ UIStyle.place(title,self,Rect2(20,26,808,42))
  var note: Label = UIStyle.label("CHOOSE ONE",15,UIStyle.MUTED,true)
  note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- UIStyle.place(note,self,Rect2(20,80,744,38))
+ UIStyle.place(note,self,Rect2(20,80,808,38))
  for index in range(choices.size()):
   var id: String = choices[index]
-  var x: float = 80+index*232
+  var x: float = 110+index*232
   var card: Control = CARD.instantiate()
   card.item_id=id
   card.motion_enabled=motion_enabled
@@ -52,4 +52,4 @@ func _ready() -> void:
  skip.padding=6
  skip.motion_enabled=motion_enabled
  skip.pressed.connect(func(): skipped.emit())
- UIStyle.place(skip,self,Rect2(596,500,168,48))
+ UIStyle.place(skip,self,Rect2(660,500,168,48))

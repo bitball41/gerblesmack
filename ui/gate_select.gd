@@ -11,6 +11,7 @@ var cards: Array[Control] = []
 var enter_buttons: Array[Button] = []
 func _ready() -> void:
  mouse_filter=Control.MOUSE_FILTER_STOP
+ resized.connect(func(): adapt_canvas(size))
  _text("Floor %d  /  Choose your next gate" % floor_num,Rect2(22,8,1100,40),32,UIStyle.CREAM,self)
  for preview in previews:
   var index: int = preview.index

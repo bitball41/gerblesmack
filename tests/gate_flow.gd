@@ -66,6 +66,7 @@ func run() -> void:
  check(first.tooltip_text.is_empty() and second.tooltip_text.is_empty(),"cards do not open native mouse-positioned tooltips")
  await process_frame
  await process_frame
+ check(ui.context_panel.size.x<=300 and ui.context_panel.size.y<360,"hover details have a smaller footprint")
  var first_position: Vector2 = ui.context_panel.position
  check(first_position.x==first.get_global_rect().end.x+12,"details sit beside the inspected item")
  ui._show_item_preview(second.item_id,second.live_note,second)
@@ -95,6 +96,43 @@ func run() -> void:
  await process_frame
  check(ui.run_view._sidebar_background.position==Vector2.ZERO and ui.run_view._sidebar_background.size.y==ui.size.y,"sidebar fills the left edge from top to bottom")
  check(ui.overlay.panel.position.y+ui.overlay.panel.size.y==ui.size.y,"shop reaches the bottom edge")
+ check(ui.overlay.panel.get_global_rect().end.x+24<=ui.run_view.board_button.get_global_rect().position.x,"shop leaves a separate area for Board")
+ check(ui.shop_view.get_global_rect().end.x<=ui.overlay.panel.get_global_rect().end.x and ui.shop_view.get_global_rect().end.y<=ui.overlay.panel.get_global_rect().end.y,"shop input area matches its visible frame")
+ var shop_state: String = ui.g.export_run()
+ ui._run_action("board")
+ await process_frame
+ var grids: Array = ui.overlay.find_children("CurrentBoardGrid","Control",true,false)
+ check(ui.overlay.view_id=="board" and grids.size()==1,"Board opens the current grid")
+ var preview_grid: Control = grids[0]
+ check(preview_grid.decorative and preview_grid.cells==ui.g.cells,"board view displays a read-only copy of current tiles")
+ for tile in preview_grid.cells:
+  if tile!=null: tile.e+=10; break
+ check(ui.g.export_run()==shop_state,"board preview cannot mutate tiles, money, offers or RNG")
+ ui._close_overlay()
+ check(ui.overlay.view_id=="shop" and ui.g.export_run()==shop_state,"closing Board restores the same shop")
+ ui._open_shop_pack()
+ var pack_state: String = ui.g.export_run()
+ ui._show_board()
+ ui._close_overlay()
+ check(ui.overlay.view_id=="pack" and ui.g.export_run()==pack_state,"Board returns to a pending pack without another charge or reroll")
+ ui.g.pack_choices=[]
+ ui._show_shop()
+ shop_state=ui.g.export_run()
+ ui._show_new_run()
+ var catalog_ids: Array[String] = []
+ for page in range(2):
+  ui.run_selector._set_page(page)
+  check(ui.run_selector._page_label.text=="Page %d / 2" % (page+1),"board pages use plain numbered navigation")
+  for option in ui.run_selector._thumbs.get_children(): catalog_ids.append(option.board_id)
+ check(catalog_ids.size()==15 and catalog_ids==Game.Cat.BOARDS.map(func(board): return board.id),"both pages show every board once in catalog order")
+ ui.run_selector._select("archivist",false)
+ ui.run_selector.seed_field.text="PAGES"
+ ui.run_selector.seed_field.text_changed.emit("PAGES")
+ ui.run_selector._set_page(0)
+ ui.run_selector._set_page(1)
+ check(ui.run_selector.chosen_board=="archivist" and ui.run_selector.seed_field.text=="PAGES","page navigation retains selection and seed")
+ check(ui.g.export_run()==shop_state,"browsing boards cannot alter the active run or its RNG")
+ ui._close_overlay()
  ui.shop_view._select_offer(0)
  check(is_instance_valid(ui.context_panel) and ui.shop_view.offers[0].buy.visible,"clicking an offer reveals details and purchase")
  ui.shop_view._select_offer(0)

@@ -1,10 +1,10 @@
 # GATEFOLD
 
-A native Godot Web 2048 roguelike: choose from 15 boards, build a Relic engine, clear eight floors, then continue in endless.
+A native Godot Web 2048 roguelike: choose from 15 boards across two pages, build a Relic engine, clear eight floors, then continue in endless.
 
 A compact tabletop presentation with open felt around the board and owned cards, editable 64px Relic illustrations, board portraits, and fuller pixel lettering. Shop actions use distinct colors; prices stay visible and purchasing appears when an offer is selected.
 
-Hover a card for its rules and current scaling values. Click an owned card for use, reorder, or sell actions in a tooltip anchored beside that item; click it again to close. Each floor has one persistent upgrade offer. Next round opens a separate gate selector with progress, targets, and guardian rules; Enter starts the gate. The shop and balance remain alive while coins move and purchases arrive in their slots. Paper, wood, metal, and pack-opening cues distinguish actions; reduced motion and sound controls are in Options.
+Hover a card for its rules and current scaling values. Click an owned card for use, reorder, or sell actions in a tooltip anchored beside that item; click it again to close. Each floor has one persistent upgrade offer. The compact shop groups round/reroll controls at the top left, offers at the top right, the upgrade at the bottom left, and packs at the bottom right. Board opens a read-only view of your current tiles and board effects. Next round opens a separate gate selector with progress, targets, and guardian rules; Enter starts the gate. The shop and balance remain alive while coins move and purchases arrive in their slots. Paper, wood, metal, and pack-opening cues distinguish actions; reduced motion and sound controls are in Options.
 
 ## Controls
 
