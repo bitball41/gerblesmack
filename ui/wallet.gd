@@ -79,8 +79,8 @@ func _set_count(value: float) -> void:
  if number!=_last_tick: _last_tick=number; count_tick.emit()
 
 func _fit() -> void:
- var font_size: int = display_size
- while font_size>12 and UIStyle.DISPLAY.get_string_size(value_label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>value_label.size.x: font_size-=2
+ var font_size: int = UIStyle.pixel_font_size(display_size)
+ while font_size>36 and UIStyle.DISPLAY.get_string_size(value_label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>value_label.size.x: font_size-=18
  value_label.add_theme_font_size_override("font_size",UIStyle.pixel_font_size(font_size))
 
 func _show_delta(text: String, income: bool) -> void:

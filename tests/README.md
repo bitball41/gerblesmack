@@ -16,4 +16,4 @@ Tests are excluded from the exported game.
 
 `polish.gd` adds checks for one upgrade per floor, unbought-offer persistence, redemption and save/load, refresh on a new floor, live decimal/scientific multiplier tooltips, selected-item selling, preserved shop nodes, and direct Options access. `polish_capture.tscn` is a reproducible browser review fixture; tests are excluded from production exports.
 
-`gate_flow.gd` checks the persisted gate waiting state, preview RNG isolation, blocked moves before entry, authoritative target/move previews, completed gate status, retries and floor rollover, Options return, fixed hover/selection position, repeat-click dismissal, contextual purchasing, and full-height sidebar/shop bounds.
+`gate_flow.gd` checks the persisted gate waiting state, preview RNG isolation, blocked moves before entry, authoritative target/move previews, completed gate status, retries and floor rollover, Options return, item-relative hover/selection anchors, tracking item movement, stable placement when re-inspecting one item, repeat-click dismissal, contextual purchasing, and full-height sidebar/shop bounds.

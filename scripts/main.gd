@@ -682,6 +682,7 @@ func _show_settings() -> void:
  if has_run: col.add_child(_button("EXPORT SAVED RUN",func(): _save_dialog(false)))
  col.add_child(_button("IMPORT SAVE",func(): _save_dialog(true)))
  col.add_child(_paragraph("Import accepts native saves and JSON from the original HTML game.",UIStyle.MUTED,13))
+ col.add_child(_paragraph("m6x11plus font by Daniel Linssen",UIStyle.MUTED,18))
 
 func _save_dialog(importing: bool) -> void:
  var col: VBoxContainer = _open("IMPORT SAVED RUN" if importing else "EXPORT SAVED RUN","save",Vector2(800,600))
@@ -810,26 +811,29 @@ func _clear_context() -> void:
  _context_source=null
  _preview_source=null
 
-func _dock(id: String, live: String = "", pinned: bool = false) -> VBoxContainer:
+func _dock(id: String, source: Control, live: String = "", pinned: bool = false) -> VBoxContainer:
  var data: Dictionary = Cat.data_for(id)
+ if pinned: _context_source=weakref(source)
+ else: _preview_source=weakref(source)
  context_panel=UIStyle.panel(Color("23343c"),UIStyle.GOLD,8)
  context_panel.name="SelectedItem" if pinned else "ItemPreview"
  context_panel.z_index=100
  context_panel.mouse_filter=Control.MOUSE_FILTER_STOP if pinned else Control.MOUSE_FILTER_IGNORE
  add_child(context_panel)
- context_panel.position=Vector2(size.x-358,324)
+ _position_context()
  context_panel.size=Vector2(346,0)
  var col: VBoxContainer = UIStyle.column(10)
  context_panel.add_child(col)
  col.add_child(UIStyle.item_tooltip(data.name,data.desc,data.rarity,live))
+ if not pinned: _ignore_preview_input(context_panel)
  return col
 
 func _show_item_preview(id: String, live: String, source: Control) -> void:
  if not _context_key.is_empty(): return
  _clear_context()
  if Cat.data_for(id).is_empty(): return
- _dock(id,live)
- _preview_source=weakref(source)
+ _dock(id,source,live)
+ _position_context.call_deferred()
 
 func _hide_item_preview(source: Control) -> void:
  if _context_key.is_empty() and _preview_source and _preview_source.get_ref()==source: _clear_context()
@@ -840,7 +844,8 @@ func _pin(id: String, key: String, source: Control, live: String = "") -> VBoxCo
   return null
  _clear_context()
  _stop_auto()
- var col: VBoxContainer = _dock(id,live,true)
+ var col: VBoxContainer = _dock(id,source,live,true)
+ _position_context.call_deferred()
  _context_key=key
  _context_source=weakref(source)
  if source.get("selected")!=null: source.selected=true; source.queue_redraw()
@@ -934,7 +939,7 @@ func _table_size() -> Vector2:
 func _layout_canvas() -> void:
  size=get_viewport_rect().size
  run_view.adapt_canvas(size)
- if is_instance_valid(context_panel): context_panel.position=Vector2(size.x-358,324)
+ if is_instance_valid(context_panel): _position_context()
  if overlay.visible and overlay.view_id in ["shop","pack","gates"]:
   overlay.panel.position=Vector2(288,320)
   overlay.panel.size=_table_size()
@@ -944,3 +949,25 @@ func _layout_canvas() -> void:
    view.size=_table_size()
    if overlay.view_id=="gates": view.adapt_canvas(_table_size())
   _shop_shade()
+
+func _process(_delta: float) -> void:
+ if is_instance_valid(context_panel): _position_context()
+
+func _position_context() -> void:
+ if not is_instance_valid(context_panel): return
+ var reference: WeakRef = _context_source if _context_source else _preview_source
+ var source: Control = reference.get_ref() as Control if reference else null
+ if not is_instance_valid(source) or not source.is_inside_tree():
+  _clear_context()
+  return
+ var item: Rect2 = _local_rect(source.get_global_rect())
+ var width: float = context_panel.size.x
+ var height: float = context_panel.size.y
+ var x: float = item.end.x+12
+ if x+width>size.x-12: x=item.position.x-width-12
+ var y: float = item.position.y
+ context_panel.position=Vector2(clampf(x,12,maxf(12,size.x-width-12)),clampf(y,12,maxf(12,size.y-height-12))).round()
+
+func _ignore_preview_input(node: Node) -> void:
+ if node is Control: node.mouse_filter=Control.MOUSE_FILTER_IGNORE
+ for child in node.get_children(): _ignore_preview_input(child)

@@ -133,7 +133,7 @@ func _build() -> void:
  _board_tag=_text("CLASSIC BOARD",Rect2(510,321,340,40),32,UIStyle.MUTED,true)
  _text("NEXT",Rect2(852,323,74,36),32,UIStyle.MUTED)
  _next=TILE_SCENE.instantiate()
- UIStyle.place(_next,self,Rect2(936,321,36,36))
+ UIStyle.place(_next,self,Rect2(934,310,48,48))
  _spawn_badge=_text("TIER 1",Rect2(1024,744,300,36),32,UIStyle.MUTED)
  board.position=Vector2(510,370)
  board.size=Vector2(420,420)
@@ -167,7 +167,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  board.visible=in_play
  _phase_heading.visible=not in_play
  _phase_heading.text="Shop" if game.phase=="shop" else "Choose your next gate"
- _phase_heading.add_theme_font_size_override("font_size",48 if game.phase=="shop" else 32)
+ _phase_heading.add_theme_font_size_override("font_size",54 if game.phase=="shop" else 36)
  _balance_heading.position.y=590 if in_play else 350
  wallet.position.y=624 if in_play else 388
  _seed.visible=in_play
@@ -219,7 +219,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _receipt_points.text="+"+game.last_merge.fmt()
  UIStyle.fit(_receipt_points,64,32)
  _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
- _seed.text=game.b().name.to_upper()+" BOARD · SEED: "+game.seed_text
+ _seed.text=game.b().name.to_upper()+" BOARD / SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
  _auto.text=("STOP AUTO " if auto_on else "START AUTO ")+("II" if game.has_upgrade("auto2") else "I")
  _speed.text="SPEED %d×" % speed

@@ -1,6 +1,6 @@
 extends RefCounted
-const DISPLAY: Font = preload("res://assets/type/PixelOperator-Bold.ttf")
-const BODY: Font = preload("res://assets/type/PixelOperator.ttf")
+const DISPLAY: Font = preload("res://assets/type/m6x11plus.ttf")
+const BODY: Font = preload("res://assets/type/m6x11plus.ttf")
 const BOLD: Font = DISPLAY
 const Visuals = preload("res://ui/visual_catalog.gd")
 const Num = preload("res://scripts/num.gd")
@@ -33,7 +33,7 @@ static func box(bg: Color, edge: Color = Color("526571"), radius: int = 9, depth
 
 static func label(text: String, font_size: int = 16, color: Color = TEXT, display: bool = false, wrap: bool = false) -> Label:
  var result := Label.new()
- result.text=text
+ result.text=readable(text)
  result.add_theme_font_override("font",DISPLAY if display else BODY)
  result.add_theme_font_size_override("font_size",pixel_font_size(font_size))
  result.add_theme_color_override("font_color",color)
@@ -95,7 +95,7 @@ static func set_rect(control: Control, rect: Rect2) -> void:
 static func default_theme() -> Theme:
  var result := Theme.new()
  result.default_font=BODY
- result.default_font_size=32
+ result.default_font_size=36
  result.set_constant("outline_size","Label",0)
  result.set_color("font_shadow_color","Label",Color.TRANSPARENT)
  result.set_constant("shadow_offset_y","Label",0)
@@ -107,7 +107,7 @@ static func default_theme() -> Theme:
  result.set_stylebox("normal","LineEdit",box(Color("152c3b"),Color("71929e"),7,3,12))
  result.set_stylebox("focus","LineEdit",box(Color("1d3542"),GOLD,7,3,12))
  result.set_font("font","LineEdit",DISPLAY)
- result.set_font_size("font_size","LineEdit",32)
+ result.set_font_size("font_size","LineEdit",36)
  result.set_color("font_color","LineEdit",CREAM)
  result.set_stylebox("normal","TextEdit",box(Color("152c3b"),Color("71929e"),7,3,12))
  for control_type in ["VScrollBar","HScrollBar"]:
@@ -123,7 +123,7 @@ static func sprite(symbol: String) -> Texture2D:
  return load("res://assets/pixel/"+symbol+".png") as Texture2D
 
 static func pixel_font_size(requested: int) -> int:
- return maxi(32,int(roundf(requested/16.0))*16)
+ return 36 if requested<=36 else int(ceilf(requested/18.0))*18
 
 static func precise(value) -> String:
  var n = Num.of(value)
@@ -135,7 +135,7 @@ static func item_tooltip(title_text: String, description: String, rarity: String
  result.custom_minimum_size.x=330
  var body: VBoxContainer = column(12)
  result.add_child(body)
- var title_label: Label = label(title_text,32,Color("22343c"),true,true)
+ var title_label: Label = label(title_text,54,Color("22343c"),true,true)
  title_label.custom_minimum_size.x=298
  body.add_child(title_label)
  var desc := RichTextLabel.new()
@@ -145,12 +145,12 @@ static func item_tooltip(title_text: String, description: String, rarity: String
  desc.mouse_filter=Control.MOUSE_FILTER_IGNORE
  desc.custom_minimum_size.x=298
  desc.add_theme_font_override("normal_font",BODY)
- desc.add_theme_font_size_override("normal_font_size",32)
+ desc.add_theme_font_size_override("normal_font_size",36)
  desc.add_theme_color_override("default_color",Color("38464b"))
  desc.add_theme_constant_override("line_separation",2)
  var regex := RegEx.new()
  regex.compile("([×+^][0-9][0-9.,]*|\\$[0-9]+|[0-9]+%)")
- desc.text=regex.sub(description,"[color=#a23c42]$1[/color]",true)
+ desc.text=regex.sub(readable(description),"[color=#a23c42]$1[/color]",true)
  body.add_child(desc)
  if not live.is_empty():
   var state: PanelContainer = panel(Color("243a43"),Color("49666b"),8)
@@ -165,7 +165,7 @@ static func item_tooltip(title_text: String, description: String, rarity: String
 static func fit(label_node: Label, largest: int, smallest: int = 12) -> void:
  var font: Font = label_node.get_theme_font("font")
  var font_size: int = pixel_font_size(largest)
- while font_size>maxi(32,smallest) and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=16
+ while font_size>maxi(36,smallest) and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=18
  label_node.add_theme_font_size_override("font_size",pixel_font_size(font_size))
 
 static func summary(text: String, width: float, font_size: int, max_lines: int = 3) -> String:
@@ -194,3 +194,6 @@ static func pixel_rect(canvas: CanvasItem, rect: Rect2, fill: Color, light: Colo
  canvas.draw_rect(Rect2(r.position+Vector2(unit,unit),Vector2(r.size.x-unit*2,unit)),light)
  canvas.draw_rect(Rect2(r.position+Vector2(unit,unit),Vector2(unit,r.size.y-unit*2)),light.darkened(.15))
  canvas.draw_rect(Rect2(r.position+Vector2(unit,r.size.y-unit*2),Vector2(r.size.x-unit*2,unit)),fill.darkened(.32))
+
+static func readable(text: String) -> String:
+ return text.replace("’","'").replace("…","...").replace("·","/")

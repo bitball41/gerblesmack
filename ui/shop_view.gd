@@ -124,7 +124,7 @@ func _fill_specials(game: Game) -> void:
  _text("Floor %d upgrade" % game.floor_num,Rect2(0,0,252,40),15,UIStyle.MUTED,_specials)
  if game.shop_upgrade!="":
   var id: String = game.shop_upgrade
-  var ticket: Button = _button(Cat.name_for(id)+"\n$%d" % game.cost_for(id),Rect2(0,48,252,108),func(): upgrade_inspected.emit(id,_sources[id]),Color("8f7446"),_specials,32,true)
+  var ticket: Button = _button("",Rect2(0,48,252,108),func(): upgrade_inspected.emit(id,_sources[id]),Color("8f7446"),_specials,32,true)
   ticket.set_meta("purchase_id",id)
   ticket.set_meta("cost",game.cost_for(id))
   ticket.set_meta("item_id",id)
@@ -133,7 +133,11 @@ func _fill_specials(game: Game) -> void:
   ticket.text=""
   var icon: TextureRect = UIStyle.texture(Cat.UPGRADES[id].art)
   UIStyle.place(icon,ticket,Rect2(10,30,48,48))
-  _text(Cat.name_for(id),Rect2(66,4,176,64),32,UIStyle.CREAM,ticket,true)
+  var title: String = Cat.name_for(id)
+  var words: PackedStringArray = title.split(" ")
+  if words.size()>=3 and words[-1] in ["I","II","III"]:
+   title=" ".join(words.slice(0,words.size()-2))+"\n"+" ".join(words.slice(words.size()-2))
+  _text(title,Rect2(66,4,176,64),32,UIStyle.CREAM,ticket,true)
   _text("$%d" % game.cost_for(id),Rect2(66,72,176,36),32,UIStyle.CREAM,ticket)
   _sources[id]=ticket
  else: _text("REDEEMED",Rect2(12,84,228,36),20,Color("7f9a8e"),_specials)

@@ -28,6 +28,7 @@ func _ready() -> void:
  if scene=="selector": _show_new_run()
 
 func _process(_delta: float) -> void:
+ super._process(_delta)
  if not OS.has_feature("web"): return
  var report: Dictionary = {"phase":g.phase,"money":g.money.fmt(),"relics":g.relics.map(func(r): return r.id),"inventory":g.inventory,"overlay":overlay.view_id,"context":is_instance_valid(context_panel),"pack":g.pack_choices,"upgrade":g.shop_upgrade,"gate":g.gate,"floor":g.floor_num}
  if is_instance_valid(shop_view) and shop_view.is_inside_tree(): report.selected_offer=shop_view.selected_offer

@@ -2,9 +2,9 @@
 
 A native Godot Web 2048 roguelike: choose from 15 boards, build a Relic engine, clear eight floors, then continue in endless.
 
-A compact tabletop presentation with open felt around the board and owned cards, editable 64px Relic illustrations, board portraits, and larger Pixel Operator text. Shop actions use distinct colors; prices stay visible and purchasing appears when an offer is selected.
+A compact tabletop presentation with open felt around the board and owned cards, editable 64px Relic illustrations, board portraits, and fuller pixel lettering. Shop actions use distinct colors; prices stay visible and purchasing appears when an offer is selected.
 
-Hover a card for its rules and current scaling values. Click an owned card for use, reorder, or sell actions in a fixed details dock; click it again to close. Each floor has one persistent upgrade offer. Next round opens a separate gate selector with progress, targets, and guardian rules; Enter starts the gate. The shop and balance remain alive while coins move and purchases arrive in their slots. Paper, wood, metal, and pack-opening cues distinguish actions; reduced motion and sound controls are in Options.
+Hover a card for its rules and current scaling values. Click an owned card for use, reorder, or sell actions in a tooltip anchored beside that item; click it again to close. Each floor has one persistent upgrade offer. Next round opens a separate gate selector with progress, targets, and guardian rules; Enter starts the gate. The shop and balance remain alive while coins move and purchases arrive in their slots. Paper, wood, metal, and pack-opening cues distinguish actions; reduced motion and sound controls are in Options.
 
 ## Controls
 

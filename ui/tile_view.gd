@@ -21,9 +21,8 @@ func _draw() -> void:
  UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size-Vector2(0,4)),palette[0],edge,2)
  draw_rect(Rect2(6,5,maxf(2,size.x*.25),2),Color(edge,.7))
  var text: String = UIStyle.tile_text(exponent)
- var font_size: int = int(size.x*.49)
- while UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>size.x-10 and font_size>10: font_size-=1
- font_size=UIStyle.pixel_font_size(font_size)
+ var font_size: int = UIStyle.pixel_font_size(int(size.x*.49))
+ while UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>size.x-10 and font_size>18: font_size-=18
  var measured: Vector2 = UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size)
  var baseline: Vector2 = Vector2((size.x-measured.x)/2,size.y*.50+UIStyle.DISPLAY.get_ascent(font_size)*.32)
  draw_string(UIStyle.DISPLAY,baseline+Vector2(0,1),text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,Color("00000018"))

@@ -64,11 +64,27 @@ func run() -> void:
  var second: Control = ui.run_view.relic_cards[1]
  ui._show_item_preview(first.item_id,first.live_note,first)
  check(first.tooltip_text.is_empty() and second.tooltip_text.is_empty(),"cards do not open native mouse-positioned tooltips")
- var dock_position: Vector2 = ui.context_panel.position
+ await process_frame
+ await process_frame
+ var first_position: Vector2 = ui.context_panel.position
+ check(first_position.x==first.get_global_rect().end.x+12,"details sit beside the inspected item")
  ui._show_item_preview(second.item_id,second.live_note,second)
- check(ui.context_panel.position==dock_position,"hover details use one fixed position across items")
+ await process_frame
+ await process_frame
+ var second_position: Vector2 = ui.context_panel.position
+ check(second_position.x==second.get_global_rect().end.x+12 and second_position.x>first_position.x,"details move with the item being inspected")
+ second.position.x+=20
+ await process_frame
+ check(ui.context_panel.position.x==second_position.x+20,"details follow item movement")
+ second.position.x-=20
+ ui._show_item_preview(second.item_id,second.live_note,second)
+ await process_frame
+ await process_frame
+ check(ui.context_panel.position==second_position,"recreating a preview on the same item preserves its anchor")
  ui._inspect_item("relic",1)
- check(ui.context_panel.position==dock_position,"click details use the same dock as hover")
+ await process_frame
+ await process_frame
+ check(ui.context_panel.position==second_position,"click details retain the item's anchor")
  ui._inspect_item("relic",1)
  check(ui.context_panel==null and not second.selected,"clicking a selected relic again closes details")
  ui.g.finish_gate(true)
@@ -90,5 +106,5 @@ func run() -> void:
  ui.queue_free()
  await process_frame
  await process_frame
- print("Gate flow and dock checks: ",assertions,"; failures: ",failures)
+ print("Gate flow and item detail checks: ",assertions,"; failures: ",failures)
  quit(0 if failures==0 else 1)

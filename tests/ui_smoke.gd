@@ -30,7 +30,7 @@ func run() -> void:
  check(ui.home_active and ui.home.visible,"opens on composed title screen")
  check(ui.home.find_children("*","Button",true,false).size()>=6,"title artwork and menu built")
  var title: Label = ui.home.get_node("Title")
- check(title.get_theme_font("font").resource_path=="res://assets/type/PixelOperator-Bold.ttf","readable pixel font throughout the game")
+ check(title.get_theme_font("font").resource_path=="res://assets/type/m6x11plus.ttf","readable pixel font throughout the game")
  check(title.size.x>=500,"title does not wrap into a column")
  for definition in Game.Cat.BOARDS:
   ui.start_run(definition.id,"UI-TEST")

@@ -49,7 +49,7 @@ func _refresh() -> void:
  focus.draw_center=false
  focus.set_border_width_all(3)
  add_theme_stylebox_override("focus",focus)
- title.text=data.name
+ title.text=UIStyle.readable(data.name)
  rarity.text=data.rarity.to_upper()
  caption.text=_caption
  for label_node in [title,rarity,caption]:
@@ -76,12 +76,12 @@ func _layout() -> void:
  rarity.visible=false
  caption.visible=false
  title.visible=size.x>=90
- title.text=Cat.data_for(item_id).get("name",item_id)
+ title.text=UIStyle.readable(Cat.data_for(item_id).get("name",item_id))
  title.autowrap_mode=TextServer.AUTOWRAP_WORD
  title.max_lines_visible=2
  title.clip_text=true
  title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
- title.add_theme_font_size_override("font_size",32)
+ title.add_theme_font_size_override("font_size",36)
  title.position=Vector2(4,art_size+10)
  title.size=Vector2(size.x-8,size.y-art_size-18)
  queue_redraw()

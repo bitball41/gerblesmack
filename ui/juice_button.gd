@@ -10,6 +10,7 @@ var _hover: Tween
 var _text_key := ""
 
 func _ready() -> void:
+ text=UIStyle.readable(text)
  clip_text=true
  if text.contains("→"):
   text=text.replace("→","").strip_edges()
@@ -43,12 +44,13 @@ func _ready() -> void:
  pivot_offset=size*.5
 
 func _process(_delta: float) -> void:
+ text=UIStyle.readable(text)
  var key: String = text+str(size.x)+str(display_size)
  if key==_text_key: return
  _text_key=key
  var font_size: int = UIStyle.pixel_font_size(display_size)
  var available: float = size.x-padding*2-4-(30 if has_node("ActionArrow") else 0)
- while font_size>32 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=16
+ while font_size>36 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=18
  add_theme_font_size_override("font_size",UIStyle.pixel_font_size(font_size))
 
 func _draw() -> void:
