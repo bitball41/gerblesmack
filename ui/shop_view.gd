@@ -27,24 +27,23 @@ var selected_offer := -1
 func _ready() -> void:
  mouse_filter=Control.MOUSE_FILTER_STOP
  resized.connect(func():
-  if is_instance_valid(_specials): _specials.position.y=size.y-174
+  if is_instance_valid(_specials): _specials.position.y=size.y-180
  )
  wallet=WALLET.instantiate()
  wallet.visible=false
  add_child(wallet)
- _next_round=_button("Next\nround",Rect2(20,36,144,90),func(): next_requested.emit(),Color("bd594c"),null,30)
- _reroll=_button("Reroll\n$3",Rect2(20,146,144,90),func(): reroll_requested.emit(),Color("328a69"),null,30)
+ _next_round=_button("Next\nround",Rect2(20,74,144,86),func(): next_requested.emit(),Color("bd594c"),null,30)
+ _reroll=_button("Reroll\n$3",Rect2(20,180,144,86),func(): reroll_requested.emit(),Color("328a69"),null,30)
  _specials=Control.new()
- UIStyle.place(_specials,self,Rect2(20,406,808,156))
+ UIStyle.place(_specials,self,Rect2(20,400,856,160))
  for index in range(4):
   var slot := Control.new()
-  UIStyle.place(slot,self,Rect2(192+index*160,28,144,330))
+  UIStyle.place(slot,self,Rect2(184+index*172,28,164,330))
   offers.append({"id":"__unset","root":slot,"buy":null,"card":null})
 
 func _draw() -> void:
- # A single recessed tray, with quiet table around every card.
- draw_rect(Rect2(180,12,648,344),Color("172b3350"))
- draw_rect(Rect2(20,382,808,2),Color("78928a65"))
+ # One open field; alignment groups the cards without another panel.
+ draw_rect(Rect2(20,382,856,2),Color("78928a65"))
 
 func _text(text: String, rect: Rect2, font_size: int, color: Color = UIStyle.CREAM, parent: Node = null, wrap: bool = false) -> Label:
  var label: Label = UIStyle.label(text,font_size,color,true,wrap)
@@ -105,13 +104,13 @@ func _fill_offer(index: int, id: String) -> void:
  card.item_id=id
  card.motion_enabled=motion_enabled
  card.custom_minimum_size=Vector2.ZERO
- UIStyle.place(card,root,Rect2(0,46,144,192))
+ UIStyle.place(card,root,Rect2(0,46,164,192))
  card.inspected.connect(func(_item: String): _select_offer(index))
  slot.card=card
- var price: Label = _text("",Rect2(0,2,144,38),30,UIStyle.GOLD,root)
+ var price: Label = _text("",Rect2(0,2,164,38),30,UIStyle.GOLD,root)
  price.name="Price"
  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- slot.buy=_button("BUY",Rect2(0,262,144,46),func(): buy_requested.emit(id),Color("328a69"),root,20)
+ slot.buy=_button("BUY",Rect2(0,262,164,46),func(): buy_requested.emit(id),Color("328a69"),root,20)
  slot.buy.name="Buy"+id.capitalize()
  slot.buy.visible=false
  if motion_enabled:
@@ -123,35 +122,43 @@ func _fill_specials(game: Game) -> void:
  _heal=null
  for child in _specials.get_children(): _specials.remove_child(child); child.queue_free()
  _sources.clear()
- _text("Floor %d upgrade" % game.floor_num,Rect2(0,0,300,40),15,UIStyle.MUTED,_specials)
  if game.shop_upgrade!="":
   var id: String = game.shop_upgrade
-  var ticket: Button = _button("",Rect2(0,48,300,108),func(): upgrade_inspected.emit(id,_sources[id]),Color("8f7446"),_specials,32,true)
+  var ticket: Button = load("res://ui/art_button.gd").new()
+  ticket.item_id=id
+  ticket.custom_minimum_size=Vector2.ZERO
+  ticket.pressed.connect(func(): upgrade_inspected.emit(id,_sources[id]))
+  UIStyle.place(ticket,_specials,Rect2(0,0,332,160))
   ticket.set_meta("purchase_id",id)
   ticket.set_meta("cost",game.cost_for(id))
-  ticket.set_meta("item_id",id)
-  ticket.display_size=32
-  ticket.padding=5
-  ticket.text=""
-  var icon: TextureRect = UIStyle.texture(Cat.UPGRADES[id].art)
-  UIStyle.place(icon,ticket,Rect2(10,30,48,48))
-  var title: String = Cat.name_for(id)
-  var words: PackedStringArray = title.split(" ")
-  if words.size()>=3 and words[-1] in ["I","II","III"]:
-   title=" ".join(words.slice(0,words.size()-2))+"\n"+" ".join(words.slice(words.size()-2))
-  _text(title,Rect2(66,4,224,64),32,UIStyle.CREAM,ticket,true)
-  _text("$%d" % game.cost_for(id),Rect2(66,72,224,36),32,UIStyle.CREAM,ticket)
+  var art := TextureRect.new()
+  art.texture=load("res://assets/plates/voucher_"+id+".png")
+  art.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+  art.mouse_filter=Control.MOUSE_FILTER_IGNORE
+  UIStyle.place(art,ticket,Rect2(0,40,160,112))
+  var price := _text("$%d" % game.cost_for(id),Rect2(0,0,160,36),30,UIStyle.GOLD,ticket)
+  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+  _text(Cat.name_for(id),Rect2(176,40,156,120),36,UIStyle.CREAM,ticket,true)
   _sources[id]=ticket
- else: _text("REDEEMED",Rect2(12,84,228,36),20,Color("7f9a8e"),_specials)
- _text("Supply pack",Rect2(576,0,232,40),15,UIStyle.MUTED,_specials)
+ else: _text("REDEEMED",Rect2(0,80,300,36),27,Color("7f9a8e"),_specials)
  if not game.shop_pack_bought:
   var cost: int = 0 if game.b().get("free_packs",false) else game.price(5)
-  var open: Button = _button("Open\n$%d" % cost,Rect2(576,48,232,108),func(): pack_requested.emit(),Color("6e598d"),_specials,20)
-  open.set_meta("cost",cost)
-  _sources["pack"]=open
- else: _text("OPENED",Rect2(584,84,224,36),20,Color("7f9a8e"),_specials)
+  var pack: Button = load("res://ui/art_button.gd").new()
+  pack.custom_minimum_size=Vector2.ZERO
+  pack.pressed.connect(func(): pack_requested.emit())
+  UIStyle.place(pack,_specials,Rect2(624,0,232,160))
+  pack.set_meta("cost",cost)
+  var art := TextureRect.new()
+  art.texture=preload("res://assets/plates/supply_pack.png")
+  art.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+  art.mouse_filter=Control.MOUSE_FILTER_IGNORE
+  UIStyle.place(art,pack,Rect2(52,32,128,128))
+  var price := _text("$%d" % cost,Rect2(0,0,232,36),30,UIStyle.GOLD,pack)
+  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+  _sources["pack"]=pack
+ else: _text("OPENED",Rect2(624,80,232,36),27,Color("7f9a8e"),_specials)
  if game.hp<game.max_hp and not game.shop_heal_bought:
-  _heal=_button("Heal\n$%d" % game.price(5),Rect2(20,256,144,90),func(): heal_requested.emit(),Color("9a5665"),self,32)
+  _heal=_button("Heal $%d" % game.price(5),Rect2(20,290,144,60),func(): heal_requested.emit(),Color("9a5665"),self,27)
   _heal.set_meta("cost",game.price(5))
 
 

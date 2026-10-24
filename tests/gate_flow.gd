@@ -141,6 +141,24 @@ func run() -> void:
  check(ui.g.phase=="gates" and ui.g.gate==1 and ui.overlay.view_id=="gates","Next round stops at the next gate")
  check(ui.gate_selector.enter_buttons[0].disabled and not ui.gate_selector.enter_buttons[1].disabled,"route progresses to the second gate")
  check(ui.scale==Vector2.ONE and ui.run_view._gate_name.get_theme_font_size("font_size")>=32,"reading text avoids the old two-thirds shrink")
+ ui.start_run("blue","LEGIBILITY")
+ ui.g.relics=[{"id":"carbon","growth":Num.new(1),"charge":0,"carry":0},{"id":"echo","growth":Num.new(1),"charge":0,"carry":0}]
+ ui._refresh_run()
+ await process_frame
+ var cards: Array = ui.run_view.relic_cards
+ check(cards[0].get_global_rect().end.x<cards[1].get_global_rect().position.x,"two relics use separate full-width slots despite six-slot capacity")
+ var first_surface: StyleBoxFlat = cards[0].get_theme_stylebox("normal")
+ var second_surface: StyleBoxFlat = cards[1].get_theme_stylebox("normal")
+ check(first_surface.bg_color!=second_surface.bg_color,"relic identity retains its individual card color")
+ var readable: String = ui.UIStyle.readable("2 → 4 / 4 → 8")
+ check(readable=="2 > 4 / 4 > 8","growth instructions use supported readable glyphs")
+ var missing: Array[String] = []
+ for catalog in [Game.Cat.RELICS,Game.Cat.SPELLS,Game.Cat.RUNES,Game.Cat.UPGRADES]:
+  for id in catalog:
+   var copy: String = ui.UIStyle.readable(catalog[id].name+" "+catalog[id].desc)
+   for character in copy:
+    if character!="\n" and not ui.UIStyle.BODY.has_char(character.unicode_at(0)) and not character in missing: missing.append(character)
+ check(missing.is_empty(),"every item name and normalized rule uses glyphs provided by the pixel font: "+str(missing))
  ui.queue_free()
  await process_frame
  await process_frame

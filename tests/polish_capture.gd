@@ -8,11 +8,15 @@ func _ready() -> void:
  var scene: String = "shop"
  if OS.has_feature("web"): scene=str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('qa') || 'shop'"))
  if scene=="home": return
- start_run("black","POLISH")
+ start_run("blue" if scene.begins_with("clarity") else "black","POLISH")
  if scene=="gates": return
  _begin_gate()
  effects.clear_transients()
  g.relics=[{"id":"carbon","growth":Num.new(1),"charge":0,"carry":0},{"id":"monolith","growth":Num.new(2.75),"charge":0,"carry":0},{"id":"compound","growth":Num.new(1.953),"charge":0,"carry":0}]
+ if scene.begins_with("clarity"):
+  g.relics=[{"id":"carbon","growth":Num.new(1),"charge":0,"carry":0},{"id":"echo","growth":Num.new(1),"charge":0,"carry":0}]
+  if scene=="clarity_full":
+   for id in ["odd","avalanche"]: g.relics.append({"id":id,"growth":Num.new(1),"charge":0,"carry":0})
  g.inventory=["mercy","venus"]
  g.money=Num.new(29)
  run_view.wallet.reset(g.money)
@@ -20,9 +24,9 @@ func _ready() -> void:
  if scene=="play": return
  g.finish_gate(true)
  g.open_shop()
- g.shop_offers=["echo","battery","prism","mercury"]
- g.shop_upgrade="moves1"
- g.floor_upgrade="moves1"
+ g.shop_offers=["corner","steelworks","feedback","mercury"] if scene.begins_with("clarity") else ["echo","battery","prism","mercury"]
+ g.shop_upgrade="trade3" if scene=="clarity_full" else "moves1"
+ g.floor_upgrade=g.shop_upgrade
  g.money=Num.new(29)
  _refresh_run(false)
  _show_shop()

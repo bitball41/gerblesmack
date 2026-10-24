@@ -197,5 +197,6 @@ static func pixel_rect(canvas: CanvasItem, rect: Rect2, fill: Color, light: Colo
  canvas.draw_rect(Rect2(r.position+Vector2(unit,unit),Vector2(unit,r.size.y-unit*2)),light.darkened(.15))
  canvas.draw_rect(Rect2(r.position+Vector2(unit,r.size.y-unit*2),Vector2(r.size.x-unit*2,unit)),fill.darkened(.32))
 
-static func readable(text: String) -> String:
- return text.replace("’","'").replace("…","...").replace("·","/")
+static func readable(text: String, arrows: bool = true) -> String:
+ var result: String = text.replace("’","'").replace("…","...").replace("·","/").replace("−","-")
+ return result.replace("→",">") if arrows else result

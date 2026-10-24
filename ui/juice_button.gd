@@ -10,7 +10,7 @@ var _hover: Tween
 var _text_key := ""
 
 func _ready() -> void:
- text=UIStyle.readable(text)
+ text=UIStyle.readable(text,false)
  clip_text=true
  if text.contains("→"):
   text=text.replace("→","").strip_edges()

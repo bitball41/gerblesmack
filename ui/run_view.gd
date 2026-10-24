@@ -48,12 +48,21 @@ var _progress_tween: Tween
 var _built := false
 var _play_controls: Array[CanvasItem] = []
 var _sidebar_background: PanelContainer
-var _sidebar_bottom: Array[Control] = []
+var _life_heading: Label
+var _floor_heading: Label
+var _route_heading: Label
+var _options: Button
+var _sidebar_rules: Array[ColorRect] = []
+var _shop_sign: TextureRect
+var _in_play := true
+var _canvas_size := Vector2(1440,900)
+var _relic_meter: Control
+var _pocket_meter: Control
 var _sidebar_play: Array[CanvasItem] = []
 var _phase_heading: Label
 var _balance_heading: Label
 var board_button: Button
-var _board_note: Label
+var _board_art: TextureRect
 var _controls_hint: Label
 @onready var board: Control = $Board
 @onready var rack: Control = $RelicRack
@@ -90,7 +99,18 @@ func _button(text: String, rect: Rect2, action: String, color: Color = Color("34
 
 func _build() -> void:
  _sidebar_background=_panel(Rect2(0,0,252,900),Color("23343c"),Color("536268"))
- _text("GATEFOLD",Rect2(28,32,200,48),32,UIStyle.CREAM,true)
+ _text("GATEFOLD",Rect2(28,28,200,48),32,UIStyle.CREAM,true)
+ for y in [96,464,664]:
+  var rule := ColorRect.new()
+  rule.color=Color("71878060")
+  rule.mouse_filter=Control.MOUSE_FILTER_IGNORE
+  UIStyle.place(rule,self,Rect2(28,y,196,2))
+  _sidebar_rules.append(rule)
+ _shop_sign=TextureRect.new()
+ _shop_sign.texture=preload("res://assets/plates/shop_sign.png")
+ _shop_sign.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+ _shop_sign.mouse_filter=Control.MOUSE_FILTER_IGNORE
+ UIStyle.place(_shop_sign,self,Rect2(30,128,192,96))
  var sidebar_start: int = get_child_count()
  _gate_subtitle=_text("Gate 1 / 3",Rect2(32,108,188,36),32,UIStyle.MUTED)
  _gate_name=_text("Entry Gate",Rect2(32,146,188,72),32,UIStyle.CREAM,false,self,true)
@@ -114,19 +134,23 @@ func _build() -> void:
  wallet.display_size=48
  UIStyle.place(wallet,self,Rect2(32,624,196,64))
  _money=wallet.value_label
- var bottom_start: int = get_child_count()
- _text("Life",Rect2(32,708,80,36),32,UIStyle.MUTED)
+ _life_heading=_text("Life",Rect2(28,708,80,36),32,UIStyle.MUTED)
  _hearts=Control.new()
- UIStyle.place(_hearts,self,Rect2(90,708,144,33))
- _floor=_text("1 / 8",Rect2(32,758,120,48),48,UIStyle.GOLD,true)
+ UIStyle.place(_hearts,self,Rect2(80,708,144,33))
+ _floor=_text("1 / 8",Rect2(28,758,120,48),48,UIStyle.CREAM,true)
+ _floor_heading=_text("Floor",Rect2(28,552,92,36),27,UIStyle.MUTED)
+ _route_heading=_text("Gates",Rect2(28,608,92,36),27,UIStyle.MUTED)
  _route=Control.new()
  UIStyle.place(_route,self,Rect2(177,773,53,16))
- _button("Options",Rect2(28,832,196,48),"menu",Color("bd8536"),Color("e1b96a"),32)
- for index in range(bottom_start,get_child_count()): _sidebar_bottom.append(get_child(index))
- _text("RELICS",Rect2(330,65,170,20),15,UIStyle.MUTED)
- _relic_count=_text("1 / 5",Rect2(1010,65,75,24),15,UIStyle.MUTED)
- _text("POCKET",Rect2(1150,65,160,20),15,UIStyle.MUTED)
- _pocket_count=_text("0 / 3",Rect2(1310,65,65,24),15,UIStyle.MUTED)
+ _options=_button("Options",Rect2(28,832,196,48),"menu",Color("34515b"),Color("708c90"),32)
+ _text("RELICS",Rect2(288,60,116,36),27,UIStyle.MUTED)
+ _relic_count=_text("1 / 5",Rect2(404,60,100,36),27,UIStyle.CREAM)
+ _relic_meter=load("res://ui/slot_meter.gd").new()
+ UIStyle.place(_relic_meter,self,Rect2(520,76,160,12))
+ _text("POCKET",Rect2(1150,60,98,36),27,UIStyle.MUTED)
+ _pocket_count=_text("0 / 3",Rect2(1248,60,80,36),27,UIStyle.CREAM)
+ _pocket_meter=load("res://ui/slot_meter.gd").new()
+ UIStyle.place(_pocket_meter,self,Rect2(1340,76,64,12))
  rack.position=Vector2(288,106)
  rack.size=Vector2(848,192)
  pocket.position=Vector2(1150,106)
@@ -159,33 +183,37 @@ func _build() -> void:
  sound_icon=UIStyle.texture("ui_sound")
  sound_icon.visible=false
  add_child(sound_icon)
- board_button=_button("Board",Rect2(1180,774,224,108),"board",Color("345966"),Color("7b9eaa"),36)
+ board_button=load("res://ui/art_button.gd").new()
+ board_button.board_stack=true
+ board_button.custom_minimum_size=Vector2.ZERO
  board_button.name="ViewBoard"
- board_button.expand_icon=true
- board_button.add_theme_constant_override("icon_max_width",64)
- _board_note=_text("",Rect2(1180,726,224,40),36,UIStyle.MUTED)
- _board_note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+ board_button.pressed.connect(func(): action_requested.emit("board"))
+ UIStyle.place(board_button,self,Rect2(1212,704,160,176))
+ _board_art=TextureRect.new()
+ _board_art.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+ _board_art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+ _board_art.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ _board_art.mouse_filter=Control.MOUSE_FILTER_IGNORE
+ UIStyle.place(_board_art,board_button,Rect2(12,4,128,160))
  board_button.hide()
- _board_note.hide()
  _built=true
 
 func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: int = 1, target_text: String = "") -> void:
  if not _built: return
  var in_play: bool = game.phase not in ["shop","gates"]
+ _in_play=in_play
  for control in _play_controls: control.visible=in_play
  for control in _sidebar_play: control.visible=in_play
  board.visible=in_play
- _phase_heading.visible=not in_play
+ _phase_heading.visible=game.phase=="gates"
+ _shop_sign.visible=game.phase=="shop"
  _phase_heading.text="Shop" if game.phase=="shop" else "Choose your next gate"
  _phase_heading.add_theme_font_size_override("font_size",54 if game.phase=="shop" else 36)
- _balance_heading.position.y=590 if in_play else 350
- wallet.position.y=624 if in_play else 388
+ _layout_sidebar()
  _seed.visible=in_play
  _controls_hint.visible=in_play
  board_button.visible=game.phase=="shop"
- _board_note.visible=board_button.visible
- board_button.icon=UIStyle.sprite("board_"+game.board_id)
- _board_note.text=game.b().name
+ _board_art.texture=UIStyle.sprite("board_"+game.board_id)
  _upgrade_zone.visible=not game.upgrades.is_empty()
  _controls_hint.text="CLICK A CARD TO SELECT" if game.phase=="shop" else "WASD / ARROWS / SWIPE"
  var target = game.target()
@@ -254,7 +282,7 @@ func _sync_cards(game: Game) -> void:
   for node in rack.get_children(): rack.remove_child(node); node.queue_free()
   relic_cards.clear()
   var slot_width := 164.0
-  var step: float = minf(180.0,(848.0-slot_width)/maxi(1,game.max_relics()-1))
+  var step: float = minf(180.0,(848.0-slot_width)/maxi(1,ids.size()-1))
   for index in range(ids.size()):
    var card: Control = CARD_SCENE.instantiate()
    card.item_id=ids[index]
@@ -269,12 +297,13 @@ func _sync_cards(game: Game) -> void:
    relic_cards.append(card)
   _relic_signature=signature
  _relic_count.text="%d / %d" % [ids.size(),game.max_relics()]
+ _relic_meter.sync(ids.size(),game.max_relics())
  var pocket_signature: String = "|".join(game.inventory)+str(game.max_pocket())
  if pocket_signature!=_pocket_signature:
   for node in pocket.get_children(): pocket.remove_child(node); node.queue_free()
   pocket_cards.clear()
   var width := 68.0
-  var step: float = minf(79.0,(225.0-width)/maxi(1,game.max_pocket()-1))
+  var step: float = minf(79.0,(225.0-width)/maxi(1,game.inventory.size()-1))
   for index in range(game.inventory.size()):
    var card: Control = CARD_SCENE.instantiate()
    card.item_id=game.inventory[index]
@@ -287,6 +316,7 @@ func _sync_cards(game: Game) -> void:
    pocket_cards.append(card)
   _pocket_signature=pocket_signature
  _pocket_count.text="%d / %d" % [game.inventory.size(),game.max_pocket()]
+ _pocket_meter.sync(game.inventory.size(),game.max_pocket())
  for index in range(relic_cards.size()):
   relic_cards[index].live_note=live_state(game,game.relics[index])
 
@@ -355,13 +385,27 @@ static func live_state(game: Game, relic: Dictionary) -> String:
   "resonance": return "Resets each swipe"
  return ""
 
+func _layout_sidebar() -> void:
+ var delta: float = _canvas_size.y-900
+ _balance_heading.position=Vector2(28,590 if _in_play else 336)
+ wallet.position=Vector2(28,624 if _in_play else 376)
+ _life_heading.position.y=708+delta if _in_play else 488
+ _hearts.position.y=_life_heading.position.y
+ _floor_heading.visible=not _in_play
+ _route_heading.visible=not _in_play
+ _floor.position=Vector2(28,758+delta) if _in_play else Vector2(120,548)
+ _floor.size.x=120 if _in_play else 104
+ _floor.horizontal_alignment=HORIZONTAL_ALIGNMENT_LEFT if _in_play else HORIZONTAL_ALIGNMENT_RIGHT
+ _floor.add_theme_font_size_override("font_size",54 if _in_play else 36)
+ _route.position=Vector2(177,773+delta) if _in_play else Vector2(178,620)
+ _options.position.y=_canvas_size.y-68
+ for index in range(_sidebar_rules.size()): _sidebar_rules[index].visible=index==0 or not _in_play
+
 func adapt_canvas(dimensions: Vector2) -> void:
  if not _built: return
+ _canvas_size=dimensions
  _sidebar_background.size.y=dimensions.y
- board_button.position=Vector2(dimensions.x-260,dimensions.y-126)
- _board_note.position=Vector2(dimensions.x-260,dimensions.y-174)
- for control in _sidebar_bottom:
-  if not control.has_meta("original_y"): control.set_meta("original_y",control.position.y)
-  control.position.y=float(control.get_meta("original_y"))+dimensions.y-900
+ board_button.position=Vector2(dimensions.x-228,dimensions.y-196)
+ _layout_sidebar()
  _seed.position.y=dimensions.y-34
  _controls_hint.position.y=dimensions.y-34

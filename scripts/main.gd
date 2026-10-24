@@ -939,7 +939,7 @@ func _local_rect(rect: Rect2) -> Rect2:
  return Rect2(get_global_transform().affine_inverse()*rect.position,rect.size/scale)
 
 func _shop_size() -> Vector2:
- return Vector2(848,size.y-320)
+ return Vector2(896,size.y-320)
 
 func _table_size() -> Vector2:
  return Vector2(size.x-288,size.y-320)

@@ -40,10 +40,10 @@ func _refresh() -> void:
  var data: Dictionary = Cat.data_for(item_id)
  if data.is_empty(): return
  var colors: Array = UIStyle.colors(item_id)
- var surface: StyleBoxFlat = UIStyle.box(Color("e5dfc7"),Color("f9f1d6"),7,4,4)
+ var surface: StyleBoxFlat = UIStyle.box(colors[0],colors[0].lightened(.35),7,4,4)
  surface.border_width_bottom=5
  add_theme_stylebox_override("normal",surface)
- add_theme_stylebox_override("hover",UIStyle.box(Color("f2e9cc"),UIStyle.GOLD,7,5,4))
+ add_theme_stylebox_override("hover",UIStyle.box(colors[0].lightened(.08),UIStyle.GOLD,7,5,4))
  add_theme_stylebox_override("pressed",surface)
  var focus: StyleBoxFlat = UIStyle.box(Color.TRANSPARENT,UIStyle.GOLD,8,0,0)
  focus.draw_center=false
@@ -53,7 +53,7 @@ func _refresh() -> void:
  rarity.text=data.rarity.to_upper()
  caption.text=_caption
  for label_node in [title,rarity,caption]:
-  label_node.add_theme_color_override("font_color",Color("2b3c42"))
+  label_node.add_theme_color_override("font_color",colors[1])
   label_node.mouse_filter=Control.MOUSE_FILTER_IGNORE
  title.add_theme_font_override("font",UIStyle.BODY)
  title.add_theme_font_size_override("font_size",15)
@@ -91,9 +91,10 @@ func _layout() -> void:
 
 func _draw() -> void:
  if item_id.is_empty(): return
- var edge: Color = UIStyle.GOLD if selected else Color("dbcda7")
+ var palette: Array = UIStyle.colors(item_id)
+ var edge: Color = UIStyle.GOLD if selected else Color(palette[0]).lightened(.35)
  draw_rect(Rect2(3,3,size.x-6,size.y-9),edge,false,1)
- draw_rect(Rect2(6,size.y-8,size.x-12,2),Color("172932"))
+ draw_rect(Rect2(6,size.y-8,size.x-12,2),Color(palette[0]).darkened(.35))
 
 func _tilt(entered: bool) -> void:
  z_index=8 if entered else 0

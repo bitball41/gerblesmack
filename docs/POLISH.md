@@ -56,3 +56,12 @@ The shop is 848 logical pixels wide and still reaches the bottom. Its layout is 
 Tooltip width falls from 346 to 300 pixels. Header size is 36px and rule/live-state text is 27px, with reduced padding and gaps. Hover remains attached to each item; click actions and repeated-click dismissal remain. The approved m6x11plus face is retained. Compact shop card titles fit long words without splitting or cropping them.
 
 Custom views fill their assigned host with zero offsets. The old shop scene minimum size is removed so its pointer-input area stays within the visible shop frame and cannot cover the Board button.
+
+
+## Shop clarity pass
+
+Owned cards space themselves by the number owned, so capacity upgrades do not prematurely overlap their names. Each card keeps its original background/ink palette. Labels, counts, and small capacity marks share one header line.
+
+The shop uses one open field. Next round and Reroll align with the offer cards; those cards are 164px wide to keep names at the existing readable size. The lower row contains a paper upgrade coupon and a foil Supply Pack, each with a price above the object. A stack of board portraits opens the current board without a redundant text caption. The sidebar groups balance, life, floor, and gate progress beneath a wooden Shop sign.
+
+Normalize unsupported punctuation before displaying item copy, including the Growth Rune arrows. The gate-flow suite verifies glyph coverage for every item name and rule, alongside Blue board spacing and distinct card palettes. Keep tooltips anchored to their source item.
