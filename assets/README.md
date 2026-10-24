@@ -1,7 +1,7 @@
-# Gatefold artwork
+# Gatefold artwork and sound
 
-The active game uses the original pixel drawings in `pixel/` and the original bitmap font in `fonts/pixel.fnt` with its atlas. Their editable source is `tools/build_pixel_assets.py`: 32px illustration grids, fifteen distinct 80x100 board portraits, and a hand-authored 5x7 alphabet. Raster assets are generated without antialiasing and sampled with nearest filtering. The title, cards, board, tiles, enhancements, icons, shop, collection, menus, and loading mark use this system.
+Active Relic illustrations are original 64px drawings in `plates/`, with editable pixel shapes and palettes in `tools/build_relic_plates.py`. The same source draws the 80x100 board portraits. It uses no image-generation model output. Small pictograms remain in `pixel/`; the bitmap alphabet remains in `fonts/pixel.fnt`. Textures use nearest sampling.
 
-Card colors and descriptions retain the supplied `Gatefold (6)(1).html` reference. The older SVGs and extracted Nimbus TTFs remain as source reference, with their embedded metadata and notices, and are excluded from the Web build.
+The ivory print framing, dark ink, upper-left highlights, muted card palettes, and quiet teal table form the shared style. Original catalog names, colors, and rules are retained. The older SVGs and Nimbus fonts remain reference material excluded from the Web export.
 
-The background is a native shader with a fixed pixel grid, a stepped palette, subtle dithering, and a warmer shop state. Tiles and frames use hard pixel edges and small bevels. Coin/card flights, score effects, and gate banners are transient Godot nodes. Sound uses an original short, quantized oscillator; no audio clips from the reference games are included.
+`audio/` contains original PCM effects built by `tools/build_sound_assets.py`: filtered noise for paper, damped resonators for wood and bronze, and short struck chords for milestones. No audio or imagery from the reference games is included.

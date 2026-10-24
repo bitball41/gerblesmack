@@ -4,7 +4,7 @@ A native Godot 4.5 project using the supplied HTML game as the rules and visual 
 
 ## Presentation and scene structure
 
-The runtime uses original 32px sprite drawings, fifteen illustrated board portraits, a 5x7 bitmap alphabet, unfiltered textures, square beveled frames, and a quantized animated background. Original card palettes and rules are retained; the reference vectors and Nimbus fonts are excluded from the Web export.
+The runtime uses editable 64px Relic plates, smaller pixel pictograms, fifteen illustrated board portraits, a 5x7 bitmap alphabet, unfiltered textures, beveled frames, and a restrained quantized background. See POLISH.md for current presentation and interaction rules. Original card palettes and rules are retained; the reference vectors and Nimbus fonts are excluded from the Web export.
 
 New-run selection uses a large board portrait, benefits and drawbacks, and compact browsing portraits. Its statistics and starting kit are generated with an isolated, non-persisting Game instance, so previews include starting upgrades and cannot mutate the active run or its RNG. The five additional boards retain a separate page. The shop sits below the owned rack, and its scene and wallet persist through purchases.
 

@@ -23,6 +23,7 @@ func _draw() -> void:
  var text: String = UIStyle.tile_text(exponent)
  var font_size: int = int(size.x*.49)
  while UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>size.x-10 and font_size>10: font_size-=1
+ font_size=UIStyle.pixel_font_size(font_size)
  var measured: Vector2 = UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size)
  var baseline: Vector2 = Vector2((size.x-measured.x)/2,size.y*.50+UIStyle.DISPLAY.get_ascent(font_size)*.32)
  draw_string(UIStyle.DISPLAY,baseline+Vector2(0,1),text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,Color("00000018"))
@@ -34,7 +35,7 @@ func _draw() -> void:
  for key in ["gold","steel","glass"]:
   if fx.get(key,false): enhancement+=("Au" if key=="gold" else "Fe" if key=="steel" else "◇")+" "
  if not enhancement.is_empty():
-  var small: int = maxi(9,int(size.x*.13))
+  var small: int = 15
   var width: float = UIStyle.BOLD.get_string_size(enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small).x
   draw_string(UIStyle.BOLD,Vector2((size.x-width)/2,size.y-10),enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small,Color(palette[1],.8))
  if value.get("seal",false):

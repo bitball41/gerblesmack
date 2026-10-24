@@ -52,6 +52,14 @@ jobs:
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" ui-smoke.log; then
             exit 1
           fi
+      - name: Floor upgrade and contextual interaction checks
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/polish.gd 2>&1 | tee polish.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" polish.log; then
+            exit 1
+          fi
       - name: Build web version
         shell: bash
         run: |

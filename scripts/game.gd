@@ -37,6 +37,9 @@ var last_entries: Array = []
 var fired_relics: Array = []
 var shop_offers: Array = []
 var shop_upgrade := ""
+var floor_upgrade := ""
+var floor_upgrade_floor := 0
+var floor_upgrade_bought := false
 var shop_rerolls := 0
 var shop_pack_bought := false
 var pack_choices: Array = []
@@ -120,6 +123,9 @@ func _grant(id: String) -> bool:
  return true
 
 func new_run(id: String = "classic", run_seed: String = "") -> void:
+ floor_upgrade=""
+ floor_upgrade_floor=0
+ floor_upgrade_bought=false
  board_id = Cat.board(id).id
  var raw_seed: String = run_seed if not run_seed.is_empty() else "%X" % Time.get_ticks_usec()
  seed_text = raw_seed.to_upper()
@@ -428,11 +434,18 @@ func _make_offers() -> void:
  shop_offers=[first,second,rng.pick(Cat.SPELLS.keys()),rng.pick(Cat.RUNES.keys())]
 
 func _make_shop() -> void:
+ if floor_upgrade_floor==floor_num:
+  shop_upgrade="" if floor_upgrade_bought else floor_upgrade
+  _make_offers()
+  return
  var pool: Array = _eligible_upgrades()
  var selected = rng.pick(pool)
  var higher: Array = pool.filter(func(id): return Cat.UPGRADES[id].get("req")!=null)
  if not higher.is_empty() and rng.randf()<.65: selected=rng.pick(higher)
  shop_upgrade=selected if selected!=null else ""
+ floor_upgrade=shop_upgrade
+ floor_upgrade_floor=floor_num
+ floor_upgrade_bought=false
  _make_offers()
 
 func _clear_shop() -> void:
@@ -465,7 +478,9 @@ func buy_item(id: String) -> bool:
  var cost: int = cost_for(id)
  if money.cmp(cost)<0 or not _grant(id): return false
  money=money.minus(cost)
- if id==shop_upgrade: shop_upgrade=""
+ if id==shop_upgrade:
+  shop_upgrade=""
+  floor_upgrade_bought=true
  else: shop_offers[shop_offers.find(id)]=""
  result_text="Purchased "+Cat.name_for(id)
  save_run()
@@ -623,7 +638,7 @@ static func decode(value):
 
 func snapshot() -> Dictionary:
  var state := {}
- for key in ["seed_text","board_id","cells","relics","inventory","upgrades","rune_levels","rune_uses","floor_num","gate","hp","max_hp","moves","money","score","total_score","best_exp","cleared","failed","swipes","gate_swipes","last_dir","banked","phase","result_text","result_summary","last_merge","last_triggers","last_entries","fired_relics","next_tile","shop_offers","shop_upgrade","shop_rerolls","shop_pack_bought","pack_choices","shop_heal_bought","pending_outcome","jammed","endless"]:
+ for key in ["seed_text","board_id","cells","relics","inventory","upgrades","rune_levels","rune_uses","floor_num","gate","hp","max_hp","moves","money","score","total_score","best_exp","cleared","failed","swipes","gate_swipes","last_dir","banked","phase","result_text","result_summary","last_merge","last_triggers","last_entries","fired_relics","next_tile","shop_offers","shop_upgrade","floor_upgrade","floor_upgrade_floor","floor_upgrade_bought","shop_rerolls","shop_pack_bought","pack_choices","shop_heal_bought","pending_outcome","jammed","endless"]:
   state[key]=get(key)
  state.version=2
  state.rng_state=rng.state
@@ -667,6 +682,9 @@ func restore(state) -> bool:
  for id in state.get("shop_offers",[])+state.get("pack_choices",[]):
   if id!="" and Cat.data_for(id).is_empty(): return false
  if state.get("shop_upgrade","")!="" and not Cat.UPGRADES.has(state.shop_upgrade): return false
+ if state.get("floor_upgrade","")!="" and not Cat.UPGRADES.has(state.floor_upgrade): return false
+ if state.has("floor_upgrade_floor") and (not _finite(state.floor_upgrade_floor) or state.floor_upgrade_floor<0): return false
+ if state.has("floor_upgrade_bought") and state.floor_upgrade_bought is not bool: return false
  var runes = state.get("rune_levels",state.get("runes",{}))
  if runes is not Dictionary: return false
  for key in ["spawn","gold","glass","steel","seal"]:
@@ -682,6 +700,10 @@ func restore(state) -> bool:
  total_score=Num.of(total_score)
  last_merge=Num.of(last_merge)
  for relic in relics: relic.growth=Num.of(relic.growth)
+ if not state.has("floor_upgrade_floor"):
+  floor_upgrade=shop_upgrade
+  floor_upgrade_floor=floor_num if phase=="shop" else 0
+  floor_upgrade_bought=phase=="shop" and shop_upgrade.is_empty()
  pending_outcome=bool(state.get("pending_outcome",true))
  return true
 
@@ -716,6 +738,9 @@ func _legacy_state(data: Dictionary) -> Dictionary:
  state.shop_offers=[]
  state.shop_upgrade=""
  state.pack_choices=[]
+ state.erase("floor_upgrade")
+ state.erase("floor_upgrade_floor")
+ state.erase("floor_upgrade_bought")
  if shop is Dictionary:
   if shop.get("offers") is not Array: return {}
   for offer in shop.offers: state.shop_offers.append(offer.id if offer is Dictionary and not offer.get("sold",false) else "")

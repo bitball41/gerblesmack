@@ -46,6 +46,8 @@ var _last_score: String = ""
 var _displayed_score := 0.0
 var _progress_tween: Tween
 var _built := false
+var _play_controls: Array[CanvasItem] = []
+var _controls_hint: Label
 @onready var board: Control = $Board
 @onready var rack: Control = $RelicRack
 @onready var pocket: Control = $Pocket
@@ -80,90 +82,79 @@ func _button(text: String, rect: Rect2, action: String, color: Color = Color("34
  return node
 
 func _build() -> void:
- _panel(Rect2(20,20,236,850))
- var mark: TextureRect = UIStyle.texture("gate",UIStyle.GOLD)
- UIStyle.place(mark,self,Rect2(36,37,32,43))
- _text("GATEFOLD",Rect2(74,40,170,48),32,UIStyle.CREAM,true)
- _panel(Rect2(34,102,208,177),Color("344855"),Color("6e8d98"))
- _gate_subtitle=_text("GATE 1 / 3",Rect2(44,113,188,18),11,UIStyle.MUTED)
- _gate_subtitle.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _gate_name=_text("ENTRY GATE",Rect2(42,135,192,35),25,UIStyle.CREAM,true)
- _gate_name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _text("TARGET SCORE",Rect2(47,179,182,18),10,UIStyle.MUTED).horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _target_label=_text("96",Rect2(44,196,188,62),51,UIStyle.GOLD,true)
- _target_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _guardian_note=_text("",Rect2(40,285,196,35),11,UIStyle.MUTED,false,self,true)
- _panel(Rect2(34,330,208,160),Color("17252e"),Color("405764"))
- _text("GATE SCORE",Rect2(47,344,180,20),11,UIStyle.MUTED)
- _score_label=_text("0",Rect2(47,365,182,67),60,UIStyle.CREAM,true)
+ _panel(Rect2(30,66,222,754),Color("23343c"),Color("536268"))
+ _text("GATEFOLD",Rect2(48,87,190,42),30,UIStyle.CREAM,true)
+ _gate_subtitle=_text("GATE 1 / 3",Rect2(50,151,180,21),15,UIStyle.MUTED)
+ _gate_name=_text("ENTRY GATE",Rect2(50,181,180,34),24,UIStyle.CREAM,true)
+ _text("TARGET",Rect2(50,228,180,20),15,UIStyle.MUTED)
+ _target_label=_text("96",Rect2(50,251,180,61),45,UIStyle.GOLD,true)
+ _guardian_note=_text("",Rect2(50,319,178,56),15,UIStyle.MUTED,false,self,true)
+ _text("GATE SCORE",Rect2(50,395,180,20),15,UIStyle.MUTED)
+ _score_label=_text("0",Rect2(50,421,180,59),45,UIStyle.CREAM,true)
  _progress=ProgressBar.new()
  _progress.show_percentage=false
- _progress.add_theme_stylebox_override("background",UIStyle.box(Color("0c1b23"),Color("405560"),3,0,0))
- _progress.add_theme_stylebox_override("fill",UIStyle.box(UIStyle.BLUE,UIStyle.BLUE,3,0,0))
- UIStyle.place(_progress,self,Rect2(48,438,180,9))
- _remaining=_text("96 TO GO",Rect2(47,459,185,20),10,UIStyle.MUTED)
- _panel(Rect2(34,506,100,105),Color("192932"),Color("46616e"))
- _panel(Rect2(144,506,98,105),Color("192932"),Color("46616e"))
- _text("MOVES",Rect2(40,518,87,18),11,UIStyle.MUTED).horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _text("BALANCE",Rect2(149,518,87,18),11,UIStyle.MUTED).horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _moves=_text("18",Rect2(40,543,87,56),45,UIStyle.BLUE,true)
+ _progress.add_theme_stylebox_override("background",UIStyle.box(Color("14242b"),Color("14242b"),0,0,0))
+ _progress.add_theme_stylebox_override("fill",UIStyle.box(UIStyle.BLUE,UIStyle.BLUE,0,0,0))
+ UIStyle.place(_progress,self,Rect2(50,488,180,6))
+ _remaining=_text("96 TO GO",Rect2(50,509,180,20),15,UIStyle.MUTED)
+ _text("MOVES",Rect2(50,562,83,20),15,UIStyle.MUTED)
+ _moves=_text("18",Rect2(50,588,80,49),30,UIStyle.BLUE,true)
  wallet=WALLET_SCENE.instantiate()
- wallet.display_size=38
- UIStyle.place(wallet,self,Rect2(152,543,82,56))
+ wallet.display_size=30
+ UIStyle.place(wallet,self,Rect2(141,588,91,49))
  _money=wallet.value_label
- _moves.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _money.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- _panel(Rect2(34,629,208,50),Color("192b34"),Color("445a65"))
- _text("LIFE",Rect2(45,644,42,20),11,UIStyle.MUTED)
+ _text("BALANCE",Rect2(141,562,87,20),15,UIStyle.MUTED)
+ _text("LIFE",Rect2(50,661,45,20),15,UIStyle.MUTED)
  _hearts=Control.new()
- UIStyle.place(_hearts,self,Rect2(89,637,144,33))
- _panel(Rect2(34,695,208,53),Color("192b34"),Color("445a65"))
- _text("FLOOR",Rect2(45,711,54,22),11,UIStyle.MUTED)
- _floor=_text("1 / 8",Rect2(105,704,78,37),28,UIStyle.GOLD,true)
+ UIStyle.place(_hearts,self,Rect2(90,652,144,33))
+ _floor=_text("1 / 8",Rect2(50,700,100,32),30,UIStyle.GOLD,true)
  _route=Control.new()
- UIStyle.place(_route,self,Rect2(183,713,53,16))
- _button("MENU",Rect2(34,782,151,48),"menu",Color("db9850"),Color("efbe75"),22)
- _button("?",Rect2(196,782,46,48),"help",Color("447f99"),Color("8bb9c9"),23)
- _button("NEW RUN",Rect2(65,839,143,21),"new",Color("253440"),Color("253440"),12)
- _panel(Rect2(280,20,855,225),Color("102731a8"),Color("59777c88"))
- _panel(Rect2(1151,20,269,225),Color("102731a8"),Color("59777c88"))
- _text("RELIC ENGINE",Rect2(294,34,290,18),11,Color("d5e4df"))
- _relic_count=_text("1 / 5",Rect2(1042,31,76,25),17,UIStyle.CREAM,true)
- _relic_count.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
- _text("SPELLS & RUNES",Rect2(1166,34,185,18),11,Color("d5e4df"))
- _pocket_count=_text("0 / 3",Rect2(1355,31,50,25),17,UIStyle.CREAM,true)
- _board_tag=_text("CLASSIC BOARD",Rect2(427,281,270,28),20,Color("abc9c4"),true)
- _text("NEXT",Rect2(762,289,42,17),11,UIStyle.MUTED)
+ UIStyle.place(_route,self,Rect2(177,706,53,16))
+ _button("OPTIONS",Rect2(50,758,180,42),"menu",Color("bd8536"),Color("e1b96a"),30)
+ _text("RELICS",Rect2(330,65,170,20),15,UIStyle.MUTED)
+ _relic_count=_text("1 / 5",Rect2(1010,65,75,24),15,UIStyle.MUTED)
+ _text("POCKET",Rect2(1150,65,160,20),15,UIStyle.MUTED)
+ _pocket_count=_text("0 / 3",Rect2(1310,65,65,24),15,UIStyle.MUTED)
+ rack.position=Vector2(330,106)
+ rack.size=Vector2(750,156)
+ pocket.position=Vector2(1150,106)
+ pocket.size=Vector2(225,156)
+ var play_start: int = get_child_count()
+ _board_tag=_text("CLASSIC BOARD",Rect2(510,321,280,25),15,UIStyle.MUTED,true)
+ _text("NEXT",Rect2(831,323,55,22),15,UIStyle.MUTED)
  _next=TILE_SCENE.instantiate()
- UIStyle.place(_next,self,Rect2(809,282,34,34))
- _spawn_badge=_text("TIER 1",Rect2(851,291,115,20),10,Color("90b7b1"))
- board.position=Vector2(427,329)
- board.size=Vector2(490,490)
- _panel(Rect2(973,330,270,160),Color("e9dcaf"),Color("fbefc7"))
- _text("LAST SWIPE",Rect2(990,343,234,20),11,Color("6b6a55"))
- _receipt_points=_text("+0",Rect2(990,368,234,68),55,Color("293a40"),true)
- _receipt_counts=_text("MERGES 0    TRIGGERS 0",Rect2(990,455,234,20),11,Color("59675f"))
- _target_note=_text("",Rect2(425,830,506,28),15,UIStyle.GOLD,false,self,true)
- _action=_button("GATE CLEARED  →",Rect2(973,519,270,58),"phase",Color("d69d42"),Color("f4c46b"),25)
- _auto=_button("START AUTO  I",Rect2(973,601,270,52),"auto",Color("477f78"),Color("8ab7a7"),23)
+ UIStyle.place(_next,self,Rect2(891,312,33,33))
+ _spawn_badge=_text("TIER 1",Rect2(1024,692,160,22),15,UIStyle.MUTED)
+ board.position=Vector2(510,370)
+ board.size=Vector2(420,420)
+ _text("LAST SWIPE",Rect2(1024,393,220,20),15,UIStyle.MUTED)
+ _receipt_points=_text("+0",Rect2(1024,428,245,63),45,UIStyle.CREAM,true)
+ _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,506,245,49),15,UIStyle.MUTED)
+ _target_note=_text("",Rect2(510,807,620,42),15,UIStyle.GOLD,false,self,true)
+ _action=_button("CONTINUE",Rect2(1024,584,240,49),"phase",Color("b95e50"),Color("dd8d72"),20)
+ _auto=_button("START AUTO I",Rect2(1024,619,240,48),"auto",Color("327a69"),Color("78b99b"),20)
  _upgrade_zone=Control.new()
- UIStyle.place(_upgrade_zone,self,Rect2(973,682,270,130))
- _text("UPGRADES",Rect2(0,0,250,20),11,UIStyle.MUTED,false,_upgrade_zone)
- _speed=_button("SPEED 1×",Rect2(1263,768,137,37),"speed",Color("284c57"),Color("577b81"),17)
- _seed=_text("CLASSIC BOARD · SEED",Rect2(284,865,700,22),10,Color("8fb4b2"))
- _text("WASD / ARROWS · SWIPE · SPACE TO AUTO",Rect2(880,865,450,22),10,Color("8fb4b2"))
- var sound: Button = _button("",Rect2(1330,843,36,34),"sound",Color("234752"),Color("577a80"),20)
- sound_icon=UIStyle.texture("ui_sound",Color("b2d2cd"))
- UIStyle.place(sound_icon,sound,Rect2(7,6,22,22))
- var fullscreen: Button = _button("",Rect2(1380,843,36,34),"fullscreen",Color("234752"),Color("577a80"),20)
- UIStyle.place(UIStyle.texture("ui_fullscreen",Color("b2d2cd")),fullscreen,Rect2(7,6,22,22))
+ UIStyle.place(_upgrade_zone,self,Rect2(1150,235,225,90))
+ _text("UPGRADES",Rect2(0,0,225,18),15,UIStyle.MUTED,false,_upgrade_zone)
+ _speed=_button("SPEED 1x",Rect2(1268,619,115,48),"speed",Color("345360"),Color("6f8b93"),15)
+ for index in range(play_start,get_child_count()): _play_controls.append(get_child(index))
+ _seed=_text("",Rect2(330,859,750,22),15,Color("75918f"))
+ _controls_hint=_text("WASD / ARROWS / SWIPE",Rect2(1080,859,300,22),15,Color("75918f"))
+ # Audio and display controls live in Options; no permanent utility buttons.
+ sound_icon=UIStyle.texture("ui_sound")
+ sound_icon.visible=false
+ add_child(sound_icon)
  _built=true
 
 func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: int = 1, target_text: String = "") -> void:
  if not _built: return
+ for control in _play_controls: control.visible=game.phase!="shop"
+ board.visible=game.phase!="shop"
+ _upgrade_zone.visible=not game.upgrades.is_empty()
+ _controls_hint.text="CLICK A CARD TO SELECT" if game.phase=="shop" else "WASD / ARROWS / SWIPE"
  var target = game.target()
  _target_label.text=target.fmt()
- UIStyle.fit(_target_label,50,18)
+ UIStyle.fit(_target_label,45,15)
  _gate_subtitle.text="GATE %d / 3" % (game.gate+1)
  _gate_name.text=game.guardian().name.to_upper() if game.gate==2 else ["ENTRY GATE","INNER GATE"][game.gate]
  UIStyle.fit(_gate_name,24)
@@ -178,7 +169,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
    _score_label.text=score_text
    _displayed_score=game.score.to_float() if game.score.e<12 else 0.0
   _last_score=score_text
- UIStyle.fit(_score_label,60,18)
+ UIStyle.fit(_score_label,45,15)
  var ratio: float = clampf(pow(10,game.score.log10_value()-target.log10_value()),0,1) if game.score.m>0 else 0.0
  if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
  if motion_enabled:
@@ -205,14 +196,14 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _next.configure(game.next_tile)
  _spawn_badge.text="TIER %d" % (int(game.rune_levels.spawn)+1)
  _receipt_points.text="+"+game.last_merge.fmt()
- UIStyle.fit(_receipt_points,54,18)
- _receipt_counts.text="MERGES %d     TRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
+ UIStyle.fit(_receipt_points,45,15)
+ _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
  _seed.text=game.b().name.to_upper()+" BOARD · SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
  _auto.text=("STOP AUTO " if auto_on else "START AUTO ")+("II" if game.has_upgrade("auto2") else "I")
  _speed.text="SPEED %d×" % speed
- _speed.visible=game.has_upgrade("auto1")
- _action.visible=game.phase!="play" or game.jammed or not target_text.is_empty()
+ _speed.visible=game.has_upgrade("auto1") and game.phase=="play"
+ _action.visible=game.phase!="shop" and (game.phase!="play" or game.jammed or not target_text.is_empty())
  _action.text="CANCEL SPELL" if not target_text.is_empty() else "SHOP" if game.phase=="shop" else "RUN RESULTS" if game.phase=="over" else "TAKE A HIT  ·  −1 LIFE" if game.jammed else "GATE CLEARED" if game.phase=="reward" else "CONTINUE"
  _target_note.text=target_text
  board.targeting=not target_text.is_empty()
@@ -227,54 +218,42 @@ func _sync_cards(game: Game) -> void:
  if signature!=_relic_signature:
   for node in rack.get_children(): rack.remove_child(node); node.queue_free()
   relic_cards.clear()
-  var slot_width: float = (827.0-8*(game.max_relics()-1))/game.max_relics()
-  for index in range(game.max_relics()):
-   if index<ids.size():
-    var card: Control = CARD_SCENE.instantiate()
-    card.item_id=ids[index]
-    card.drag_index=index
-    card.motion_enabled=motion_enabled
-    card.custom_minimum_size=Vector2.ZERO
-    rack.add_child(card)
-    card.position=Vector2(index*(slot_width+8),0)
-    card.size=Vector2(slot_width,172)
-    card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("relic",pos))
-    card.reorder_requested.connect(func(from: int,to: int): relic_reordered.emit(from,to))
-    relic_cards.append(card)
-   else:
-    var empty: PanelContainer = UIStyle.panel(Color("15303855"),Color("6b8e8a55"),0)
-    rack.add_child(empty)
-    empty.position=Vector2(index*(slot_width+8),0)
-    empty.size=Vector2(slot_width,172)
-    var plus: Label = UIStyle.label("+",34,Color("9abdb640"),true)
-    plus.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-    plus.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-    empty.add_child(plus)
+  var slot_width := 112.0
+  var step: float = minf(138.0,(750.0-slot_width)/maxi(1,game.max_relics()-1))
+  for index in range(ids.size()):
+   var card: Control = CARD_SCENE.instantiate()
+   card.item_id=ids[index]
+   card.drag_index=index
+   card.motion_enabled=motion_enabled
+   card.custom_minimum_size=Vector2.ZERO
+   rack.add_child(card)
+   card.position=Vector2(index*step,0)
+   card.size=Vector2(slot_width,156)
+   card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("relic",pos))
+   card.reorder_requested.connect(func(from: int,to: int): relic_reordered.emit(from,to))
+   relic_cards.append(card)
   _relic_signature=signature
  _relic_count.text="%d / %d" % [ids.size(),game.max_relics()]
  var pocket_signature: String = "|".join(game.inventory)+str(game.max_pocket())
  if pocket_signature!=_pocket_signature:
   for node in pocket.get_children(): pocket.remove_child(node); node.queue_free()
   pocket_cards.clear()
-  var width: float = (241.0-7*(game.max_pocket()-1))/game.max_pocket()
-  for index in range(game.max_pocket()):
-   if index<game.inventory.size():
-    var card: Control = CARD_SCENE.instantiate()
-    card.item_id=game.inventory[index]
-    card.custom_minimum_size=Vector2.ZERO
-    card.motion_enabled=motion_enabled
-    pocket.add_child(card)
-    card.position=Vector2(index*(width+7),17)
-    card.size=Vector2(width,142)
-    card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("inventory",pos))
-    pocket_cards.append(card)
-   else:
-    var empty: PanelContainer = UIStyle.panel(Color("15303855"),Color("6b8e8a55"),0)
-    pocket.add_child(empty)
-    empty.position=Vector2(index*(width+7),34)
-    empty.size=Vector2(width,110)
+  var width := 68.0
+  var step: float = minf(79.0,(225.0-width)/maxi(1,game.max_pocket()-1))
+  for index in range(game.inventory.size()):
+   var card: Control = CARD_SCENE.instantiate()
+   card.item_id=game.inventory[index]
+   card.custom_minimum_size=Vector2.ZERO
+   card.motion_enabled=motion_enabled
+   pocket.add_child(card)
+   card.position=Vector2(index*step,0)
+   card.size=Vector2(width,112)
+   card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("inventory",pos))
+   pocket_cards.append(card)
   _pocket_signature=pocket_signature
  _pocket_count.text="%d / %d" % [game.inventory.size(),game.max_pocket()]
+ for index in range(relic_cards.size()):
+  relic_cards[index].live_note=live_state(game,game.relics[index])
 
 func _sync_upgrades(game: Game) -> void:
  for child in _upgrade_zone.get_children():
@@ -282,7 +261,7 @@ func _sync_upgrades(game: Game) -> void:
  for index in range(game.upgrades.size()):
   var id: String = game.upgrades[index]
   var icon: TextureRect = UIStyle.texture(Cat.UPGRADES[id].art,UIStyle.GOLD)
-  UIStyle.place(icon,_upgrade_zone,Rect2((index%6)*43,25+int(index/6.0)*44,36,40))
+  UIStyle.place(icon,_upgrade_zone,Rect2((index%6)*36,22+int(index/6.0)*36,30,30))
   icon.mouse_filter=Control.MOUSE_FILTER_STOP
   icon.tooltip_text=Cat.UPGRADES[id].name+"\n"+Cat.UPGRADES[id].desc
 
@@ -318,4 +297,17 @@ func pulse_scoring(game: Game) -> void:
 func _draw_score(value: float) -> void:
  _displayed_score=value
  _score_label.text=UIStyle.number(roundf(value))
- UIStyle.fit(_score_label,60,18)
+ UIStyle.fit(_score_label,45,15)
+
+static func live_state(game: Game, relic: Dictionary) -> String:
+ match relic.id:
+  "monolith","compound": return "CURRENT  x"+UIStyle.precise(relic.growth)
+  "battery": return "STORED  +"+UIStyle.precise(relic.charge)+" POINTS"
+  "charity": return "CURRENT  x"+UIStyle.precise(game.money.div(10).floored().plus(1))
+  "apprentice": return "CURRENT  x"+UIStyle.precise(1+game.rune_uses*.25)+" / "+str(game.rune_uses)+" RUNES USED"
+  "steelworks":
+   var count: int = game.cells.filter(func(tile): return tile!=null and tile.fx.get("steel",false)).size()
+   return "CURRENT  x"+UIStyle.precise(UIStyle.Num.power(1.2,count))+" / "+str(count)+" STEEL TILES"
+  "feedback": return "TRIGGER PROGRESS  "+str(int(relic.carry))+" / 5"
+  "resonance": return "GROWS WITHIN EACH SWIPE / RESETS NEXT SWIPE"
+ return ""

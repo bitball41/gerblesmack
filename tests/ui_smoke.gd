@@ -21,21 +21,21 @@ func run() -> void:
  # Inspect generated audio directly; the headless dummy mixer need not play voices.
  ui.effects.sound_enabled=false
  var chip: AudioStreamWAV = ui.effects._synthesize("buy",0)
- check(chip.mix_rate==22050 and chip.format==AudioStreamWAV.FORMAT_16_BITS,"purchase sound is a valid chip PCM stream")
+ check(chip.mix_rate==22050 and chip.format==AudioStreamWAV.FORMAT_16_BITS,"purchase sound is valid uncompressed PCM")
  check(chip.data.size()>1000 and chip.data.count(0)<chip.data.size(),"purchase sound contains an audible waveform")
  chip=null
  ui.g.persist_enabled=false
  if ui.reduced_motion: ui._toggle_motion()
  await process_frame
  check(ui.home_active and ui.home.visible,"opens on composed title screen")
- check(ui.home.find_children("*","Button",true,false).size()>=8,"title artwork and menu built")
+ check(ui.home.find_children("*","Button",true,false).size()>=6,"title artwork and menu built")
  var title: Label = ui.home.get_node("Title")
  check(title.get_theme_font("font").resource_path=="res://assets/fonts/pixel.fnt","native bitmap font throughout the game")
  check(title.size.x>=500,"title does not wrap into a column")
  for definition in Game.Cat.BOARDS:
   ui.start_run(definition.id,"UI-TEST")
   await process_frame
-  check(ui.run_view.board.size.x==490,"board fits "+definition.id)
+  check(ui.run_view.board.size.x==420,"board fits "+definition.id)
   check(ui.run_view.relic_cards.size()==ui.g.relics.size(),"illustrated rack "+definition.id)
   check(ui.run_view.pocket_cards.size()==ui.g.inventory.size(),"pocket view "+definition.id)
   for card in ui.run_view.relic_cards+ui.run_view.pocket_cards:

@@ -81,7 +81,7 @@ func _set_count(value: float) -> void:
 func _fit() -> void:
  var font_size: int = display_size
  while font_size>12 and UIStyle.DISPLAY.get_string_size(value_label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>value_label.size.x: font_size-=2
- value_label.add_theme_font_size_override("font_size",font_size)
+ value_label.add_theme_font_size_override("font_size",UIStyle.pixel_font_size(font_size))
 
 func _show_delta(text: String, income: bool) -> void:
  if is_instance_valid(_delta): _delta.queue_free()

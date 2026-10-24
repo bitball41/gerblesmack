@@ -70,9 +70,9 @@ func _build() -> void:
  _downside=_text("",Rect2(354,320,804,58),17,UIStyle.RED,true)
  for index in range(4):
   var panel: PanelContainer = UIStyle.panel(Color("1c2b35"),Color("57717a"),0)
-  UIStyle.place(panel,self,Rect2(352+index*205,388,191,70))
-  _text(["LIFE","MOVES","CASH","RELIC SLOTS"][index],Rect2(364+index*205,397,170,18),12,UIStyle.MUTED)
-  _stats.append(_text("",Rect2(364+index*205,418,170,35),28,UIStyle.GOLD))
+  UIStyle.place(panel,self,Rect2(352+index*205,370,191,70))
+  _text(["LIFE","MOVES","CASH","RELIC SLOTS"][index],Rect2(364+index*205,379,170,18),12,UIStyle.MUTED)
+  _stats.append(_text("",Rect2(364+index*205,400,170,35),28,UIStyle.GOLD))
  _text("STARTING KIT",Rect2(43,461,154,18),12,UIStyle.MUTED)
  _loadout=Control.new()
  UIStyle.place(_loadout,self,Rect2(198,452,982,38))
@@ -151,10 +151,10 @@ func _select(id: String, animate: bool = true) -> void:
  for index in range(items.size()):
   var data: Dictionary = Cat.data_for(items[index])
   var icon: TextureRect = UIStyle.texture(data.art)
-  UIStyle.place(icon,_loadout,Rect2(index*140,0,36,36))
+  UIStyle.place(icon,_loadout,Rect2(index*160,0,36,36))
   icon.mouse_filter=Control.MOUSE_FILTER_STOP
   icon.tooltip_text=data.name+"\n"+data.desc
-  UIStyle.place(UIStyle.label(data.name,14,UIStyle.CREAM,true,true),_loadout,Rect2(index*140+40,0,96,36))
+  UIStyle.place(UIStyle.label(data.name,14,UIStyle.CREAM,true,true),_loadout,Rect2(index*160+40,0,118,36))
  if animate and motion_enabled:
   navigated.emit()
   if _change and _change.is_valid(): _change.kill()

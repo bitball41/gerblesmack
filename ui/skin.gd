@@ -35,7 +35,7 @@ static func label(text: String, font_size: int = 16, color: Color = TEXT, displa
  var result := Label.new()
  result.text=text
  result.add_theme_font_override("font",DISPLAY if display else BODY)
- result.add_theme_font_size_override("font_size",font_size)
+ result.add_theme_font_size_override("font_size",pixel_font_size(font_size))
  result.add_theme_color_override("font_color",color)
  result.mouse_filter=Control.MOUSE_FILTER_IGNORE
  result.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
@@ -60,7 +60,7 @@ static func row(gap: int = 10) -> HBoxContainer:
 static func texture(symbol: String, tint: Color = CREAM) -> TextureRect:
  var result := TextureRect.new()
  var path: String = "res://assets/pixel/"+symbol+".png"
- if ResourceLoader.exists(path): result.texture=load(path)
+ if ResourceLoader.exists(path): result.texture=sprite(symbol)
  result.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
  # Illustrations carry their own palette. Only monochrome interface icons are tinted.
  if symbol.begins_with("ui_") and symbol!="ui_heart": result.modulate=tint
@@ -118,13 +118,59 @@ static func default_theme() -> Theme:
  return result
 
 static func sprite(symbol: String) -> Texture2D:
+ if ResourceLoader.exists("res://assets/plates/"+symbol+".png"):
+  return load("res://assets/plates/"+symbol+".png") as Texture2D
  return load("res://assets/pixel/"+symbol+".png") as Texture2D
+
+static func pixel_font_size(requested: int) -> int:
+ # Main canvas is 2/3 scale: 15 layout units = one 10px bitmap step.
+ return maxi(15,int(roundf(requested/15.0))*15)
+
+static func precise(value) -> String:
+ var n = Num.of(value)
+ return str(snappedf(n.to_float(),.001)) if n.e<5 else n.fmt()
+
+static func item_tooltip(title_text: String, description: String, rarity: String, live: String = "", native_popup: bool = false) -> PanelContainer:
+ var unit: float = 2.0/3.0 if native_popup else 1.0
+ var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),int(15*unit))
+ result.name="ItemTooltip"
+ result.custom_minimum_size.x=330*unit
+ var body: VBoxContainer = column(int(12*unit))
+ result.add_child(body)
+ var title_label: Label = label(title_text,30,Color("22343c"),true,true)
+ title_label.custom_minimum_size.x=300*unit
+ title_label.add_theme_font_size_override("font_size",int(30*unit))
+ body.add_child(title_label)
+ var desc := RichTextLabel.new()
+ desc.bbcode_enabled=true
+ desc.fit_content=true
+ desc.scroll_active=false
+ desc.mouse_filter=Control.MOUSE_FILTER_IGNORE
+ desc.custom_minimum_size.x=300*unit
+ desc.add_theme_font_override("normal_font",BODY)
+ desc.add_theme_font_size_override("normal_font_size",int(20*unit))
+ desc.add_theme_color_override("default_color",Color("38464b"))
+ var regex := RegEx.new()
+ regex.compile("([×+^][0-9][0-9.,]*|\\$[0-9]+|[0-9]+%)")
+ desc.text=regex.sub(description,"[color=#a23c42]$1[/color]",true)
+ body.add_child(desc)
+ if not live.is_empty():
+  var state: PanelContainer = panel(Color("243a43"),Color("49666b"),int(10*unit))
+  var text: Label = label(live,15,GOLD,true,true)
+  text.custom_minimum_size.x=280*unit
+  text.add_theme_font_size_override("font_size",int(15*unit))
+  state.add_child(text)
+  body.add_child(state)
+ var badge: Label = label(rarity.to_upper(),15,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("986047"),true)
+ badge.add_theme_font_size_override("font_size",int(15*unit))
+ body.add_child(badge)
+ return result
 
 static func fit(label_node: Label, largest: int, smallest: int = 12) -> void:
  var font: Font = label_node.get_theme_font("font")
  var font_size: int = largest
  while font_size>smallest and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=2
- label_node.add_theme_font_size_override("font_size",font_size)
+ label_node.add_theme_font_size_override("font_size",pixel_font_size(font_size))
 
 static func summary(text: String, width: float, font_size: int, max_lines: int = 3) -> String:
  var lines: Array[String] = []

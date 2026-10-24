@@ -45,7 +45,7 @@ func open(title_text: String, id: String, dimensions: Vector2 = Vector2(930,710)
   close_button.custom_minimum_size=Vector2(38,38)
   close_button.pressed.connect(func(): close_requested.emit())
   head.add_child(close_button)
-  close_button.grab_focus.call_deferred()
+  _focus_close_button.call_deferred(weakref(close_button))
  var scroll := ScrollContainer.new()
  scroll.size_flags_horizontal=Control.SIZE_EXPAND_FILL
  scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL
@@ -64,6 +64,10 @@ func open(title_text: String, id: String, dimensions: Vector2 = Vector2(930,710)
   _open_tween.tween_property(panel,"scale",Vector2.ONE,.16)
   _open_tween.tween_property(panel,"modulate:a",1.0,.13)
  return body
+
+func _focus_close_button(reference: WeakRef) -> void:
+ var button: Control = reference.get_ref() as Control
+ if is_instance_valid(button) and button.is_inside_tree(): button.grab_focus()
 
 func close() -> void:
  if _open_tween and _open_tween.is_valid(): _open_tween.kill()

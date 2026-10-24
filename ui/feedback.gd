@@ -8,6 +8,7 @@ var _players: Array[AudioStreamPlayer] = []
 var _sounds: Dictionary = {}
 var _particles: Array = []
 var _player_cursor := 0
+var _last_coin_ms := 0
 var _visual_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -20,57 +21,24 @@ func _ready() -> void:
 
 func play(event: String, tier: int = 0) -> void:
  if not sound_enabled or _players.is_empty(): return
+ if event=="coin":
+  var now: int = Time.get_ticks_msec()
+  if now-_last_coin_ms<45: return
+  _last_coin_ms=now
  var key: String = event+str(clampi(tier,0,5)) if event=="merge" else event
  if not _sounds.has(key): _sounds[key]=_synthesize(event,tier)
  var player: AudioStreamPlayer = _players[_player_cursor%_players.size()]
  _player_cursor+=1
  player.stream=_sounds[key]
+ player.volume_db=-22 if event=="hover" else -20 if event=="coin" else -14
  player.pitch_scale=_visual_rng.randf_range(.98,1.02)
  player.play()
 
 func _synthesize(event: String, tier: int) -> AudioStreamWAV:
- var duration: float = .07
- var frequencies: Array = [360.0]
- var volume: float = .3
- match event:
-  "merge":
-   duration=.16
-   frequencies=[[261.63,293.66,329.63,392.0,440.0,523.25][clampi(tier,0,5)]]
-   volume=.5
-  "win": duration=.6; frequencies=[392.0,493.88,587.33]; volume=.36
-  "fail": duration=.32; frequencies=[146.83,155.56]; volume=.32
-  "buy": duration=.22; frequencies=[783.99,1046.5]; volume=.27
-  "coin": duration=.036; frequencies=[1318.5]; volume=.1
-  "cash": duration=.3; frequencies=[659.25,880.0,1318.5]; volume=.28
-  "select": duration=.065; frequencies=[440.0,659.25]; volume=.17
-  "shuffle": duration=.15; frequencies=[196.0,293.66]; volume=.22
-  "pack": duration=.26; frequencies=[329.63,493.88,659.25]; volume=.28
-  "start": duration=.38; frequencies=[261.63,392.0,523.25]; volume=.26
-  "hover": duration=.025; frequencies=[500.0]; volume=.08
-  "slide": duration=.045; frequencies=[180.0,250.0]; volume=.16
- var pcm := PackedByteArray()
- var samples: int = int(duration*22050)
- pcm.resize(samples*2)
- for index in range(samples):
-  var t: float = float(index)/22050.0
-  var envelope: float = minf(1,t*500)*exp(-t*(8 if event=="win" else 22))
-  var value := 0.0
-  if event in ["buy","cash","pack","start"]:
-   var step: int = mini(frequencies.size()-1,int(t/duration*frequencies.size()))
-   value=sin(TAU*float(frequencies[step])*t)
-  else:
-   for frequency in frequencies: value+=sin(TAU*float(frequency)*t)
-   value/=frequencies.size()
-  # Soft square oscillator and a four-bit amplitude ladder make a short chip voice.
-  value=snappedf(value*.6+signf(value)*.22,.125)*volume*envelope
-  var sample: int = clampi(int(value*23000),-32768,32767)
-  pcm[index*2]=sample&255
-  pcm[index*2+1]=(sample>>8)&255
- var stream := AudioStreamWAV.new()
- stream.format=AudioStreamWAV.FORMAT_16_BITS
- stream.mix_rate=22050
- stream.data=pcm
- return stream
+ var key: String = event+str(clampi(tier,0,5)) if event=="merge" else event
+ var path: String = "res://assets/audio/"+key+".wav"
+ if not ResourceLoader.exists(path): path="res://assets/audio/click.wav"
+ return load(path) as AudioStreamWAV
 
 func number_popup(at: Vector2, text: String, color: Color = UIStyle.GOLD, large: bool = false) -> void:
  if not motion_enabled: return
@@ -160,7 +128,6 @@ func acquire_card(id: String, source: Rect2, destination: Rect2, receiver: Contr
  flight.tween_property(ghost,"size",destination.size,.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
  flight.tween_property(ghost,"self_modulate",Color.WHITE,.22)
  flight.chain().tween_callback(func(): burst(destination.get_center(),UIStyle.GOLD,8); ghost.queue_free())
- number_popup(source.get_center(),"BOUGHT",UIStyle.CREAM)
 
 func banner(title: String, subtitle: String) -> void:
  if not motion_enabled: return

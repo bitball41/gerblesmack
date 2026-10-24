@@ -13,3 +13,5 @@
 It also verifies pixel-art coverage for every catalog item, board-preview RNG isolation and starting-upgrade statistics, retained selector/seed state, immediate purchase charging, repeat-purchase protection, rapid consecutive transactions, persistent shop/wallet instances, settled counters, acquisition arrival, pending pack choices, and feedback cancellation when returning home.
 
 Tests are excluded from the exported game.
+
+`polish.gd` adds checks for one upgrade per floor, unbought-offer persistence, redemption and save/load, refresh on a new floor, live decimal/scientific multiplier tooltips, selected-item selling, preserved shop nodes, and direct Options access. `polish_capture.tscn` is a reproducible browser review fixture; tests are excluded from production exports.

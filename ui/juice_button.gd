@@ -22,7 +22,7 @@ func _ready() -> void:
  mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
  focus_mode=Control.FOCUS_ALL
  add_theme_font_override("font",UIStyle.DISPLAY)
- add_theme_font_size_override("font_size",display_size)
+ add_theme_font_size_override("font_size",UIStyle.pixel_font_size(display_size))
  for key in ["font_color","font_hover_color","font_pressed_color","font_focus_color"]: add_theme_color_override(key,text_color)
  add_theme_color_override("font_disabled_color",Color(text_color,0.4))
  add_theme_stylebox_override("normal",UIStyle.box(base_color,edge_color,8,5,padding))
@@ -49,7 +49,7 @@ func _process(_delta: float) -> void:
  var font_size: int = display_size
  var available: float = size.x-padding*2-4-(30 if has_node("ActionArrow") else 0)
  while font_size>12 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=1
- add_theme_font_size_override("font_size",font_size)
+ add_theme_font_size_override("font_size",UIStyle.pixel_font_size(font_size))
 
 func _draw() -> void:
  if size.x<10 or size.y<10: return

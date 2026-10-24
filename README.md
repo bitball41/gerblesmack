@@ -2,9 +2,9 @@
 
 A native Godot Web 2048 roguelike: choose from 15 boards, build a Relic engine, clear eight floors, then continue in endless.
 
-An original pixel-art presentation built from reusable Godot scenes: illustrated board portraits, a bitmap font, pixel cards and icons, and a stepped-color animated table. New runs use a portrait browser with a large preview, traits, drawbacks, and the actual starting kit.
+A compact tabletop presentation with open felt around the board and owned cards, editable 64px Relic illustrations, board portraits, and a bitmap font. Shop actions use distinct colors; prices stay visible and purchasing appears when an offer is selected.
 
-The shop stays on screen while balances count, coins move, and purchases fly into their slots. Packs fan out three cards to choose from. Tiles slide and pop, Relics pulse in scoring order, score gains float, and short chip sounds respond to actions. Keyboard input buffers through animation. Reduced motion is available in Settings.
+Hover a card for its rules and current scaling values. Click an owned card for local use, reorder, or sell actions. Each floor has one persistent upgrade offer. The shop and balance remain alive while coins move and purchases arrive in their slots. Paper, wood, metal, and pack-opening cues distinguish actions; reduced motion and sound controls are in Options.
 
 ## Controls
 
@@ -25,12 +25,13 @@ Use Godot 4.5.2, standard GDScript build with GL Compatibility.
 godot --headless --path . --import
 godot --headless --path . --script tests/regression.gd
 godot --headless --path . --script tests/ui_smoke.gd
+godot --headless --path . --script tests/polish.gd
 godot --headless --path . --export-release Web build/web/index.html
 python3 tools/prepare_web.py build/web
 ```
 
-GitHub Actions runs both suites and publishes passing builds to GitHub Pages. No editor installation is required to play or deploy.
+GitHub Actions runs all three suites and publishes passing builds to GitHub Pages. No editor installation is required to play or deploy.
 
-Pixel assets are committed. To regenerate them from the original grid drawings, run `python3 tools/build_pixel_assets.py` with Pillow installed; this is optional for normal development and publishing.
+Pixel and audio assets are committed. Optional rebuilds: `tools/build_pixel_assets.py` for small pictograms/font, `tools/build_relic_plates.py` for illustrated Relics/boards (Pillow), and `tools/build_sound_assets.py` for material SFX (NumPy). No asset rebuild is needed to play or publish.
 
-See [migration and scene notes](docs/PORTING.md), [asset provenance](assets/README.md), and [test provenance](tests/README.md). The Fracture content update is a separate next phase.
+See [polish direction](docs/POLISH.md), [migration and scene notes](docs/PORTING.md), [asset provenance](assets/README.md), and [test provenance](tests/README.md). The Fracture content update is a separate next phase.

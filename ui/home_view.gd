@@ -85,11 +85,9 @@ func build(game: Game, has_save: bool, record_floor: int, record_score: String) 
  UIStyle.place(UIStyle.label(str(record_floor),27,Color("eed5a0"),true),self,Rect2(945,y+16,95,32))
  UIStyle.place(UIStyle.label(record_score,27,Color("eed5a0"),true),self,Rect2(1040,y+16,190,32))
  UIStyle.place(UIStyle.label("WASD · ARROWS · SWIPE",10,Color("8cb1ad")),self,Rect2(208,850,350,20))
- var sound: Button = _button("",Rect2(1155,839,38,34),Color("234752"),Color("577a80"),"sound",21)
- sound_icon=UIStyle.texture("ui_sound",Color("b2d2cd"))
- UIStyle.place(sound_icon,sound,Rect2(8,6,22,22))
- var fullscreen: Button = _button("",Rect2(1205,839,38,34),Color("234752"),Color("577a80"),"fullscreen",21)
- UIStyle.place(UIStyle.texture("ui_fullscreen",Color("b2d2cd")),fullscreen,Rect2(8,6,22,22))
+ sound_icon=UIStyle.texture("ui_sound")
+ sound_icon.visible=false
+ add_child(sound_icon)
  _built=true
 
 func _button(text: String, rect: Rect2, color: Color, edge: Color, action: String, font_size: int = 23) -> Button:
