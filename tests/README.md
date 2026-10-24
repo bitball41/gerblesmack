@@ -10,4 +10,6 @@
 
 `ui_smoke.gd` instantiates the composed main scene and every board/reward/shop/pack view, plus help, settings, collection, and save overlays. It verifies title/font/card bounds, the shop position below the owned rack, input buffering, persistent UI nodes, tile settling, animation cancellation, touch and controller input routing, Relic ordering, autoplay cancellation, and reduced motion.
 
+It also verifies pixel-art coverage for every catalog item, board-preview RNG isolation and starting-upgrade statistics, retained selector/seed state, immediate purchase charging, repeat-purchase protection, rapid consecutive transactions, persistent shop/wallet instances, settled counters, acquisition arrival, pending pack choices, and feedback cancellation when returning home.
+
 Tests are excluded from the exported game.

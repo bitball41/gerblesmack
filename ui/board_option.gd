@@ -3,29 +3,26 @@ const UIStyle = preload("res://ui/skin.gd")
 @export var board_id := "classic"
 var selected := false
 var definition: Dictionary = {}
+var _portrait: Texture2D
 
 func _ready() -> void:
  focus_mode=Control.FOCUS_ALL
  mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+ _portrait=UIStyle.sprite("board_"+board_id)
+ for state in ["normal","hover","pressed","focus"]: add_theme_stylebox_override(state,StyleBoxEmpty.new())
  focus_entered.connect(queue_redraw)
  focus_exited.connect(queue_redraw)
  mouse_entered.connect(queue_redraw)
  mouse_exited.connect(queue_redraw)
 
 func _draw() -> void:
- var color: Color = Color(definition.get("color","#346a64"))
- var edge: Color = UIStyle.GOLD if selected or has_focus() else Color(definition.get("edge","#8cbcaf"))
- var surface: StyleBoxFlat = UIStyle.box(color.lightened(.1) if is_hovered() else color,edge,8,5,0)
- surface.set_border_width_all(3 if selected else 2)
- draw_style_box(surface,Rect2(Vector2.ZERO,size-Vector2(0,4)))
- var ink: Color = Color(definition.get("ink","#fff1d0"))
- var values: Array = [1,2,0,0,2,3,4,0,3,4,6,7,4,6,7,8]
- for index in range(16):
-  var position_in_grid: Vector2 = Vector2(13+(index%4)*12,17+int(index/4.0)*12)
-  var tile_color: Color = UIStyle.tile_colors(values[index])[0] if values[index]>0 else color.darkened(.35)
-  draw_style_box(UIStyle.box(tile_color,tile_color.lightened(.2),2,1,0),Rect2(position_in_grid,Vector2(10,10)))
- draw_string(UIStyle.DISPLAY,Vector2(74,37),str(definition.get("name",board_id)),HORIZONTAL_ALIGNMENT_LEFT,-1,23,ink)
- draw_string(UIStyle.BOLD,Vector2(75,60),str(definition.get("badge","4×4")),HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color(ink,.9))
- if selected:
-  var check_mark := PackedVector2Array([Vector2(size.x-25,16),Vector2(size.x-21,20),Vector2(size.x-14,11)])
-  draw_polyline(check_mark,ink,2,true)
+ var active: bool = selected or has_focus() or is_hovered()
+ UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size-Vector2(0,18)),Color("20313c"),UIStyle.GOLD if active else Color("496571"))
+ if _portrait:
+  var width: float = floorf(minf(size.x-12,(size.y-28)*.8))
+  draw_texture_rect(_portrait,Rect2(Vector2((size.x-width)/2,4 if active else 8),Vector2(width,width*1.25)),false)
+ var name_text: String = str(definition.get("name",board_id))
+ var font_size: int = 14
+ var text_width: float = UIStyle.DISPLAY.get_string_size(name_text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x
+ draw_string(UIStyle.DISPLAY,Vector2((size.x-text_width)/2,size.y-3),name_text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,UIStyle.GOLD if selected else UIStyle.CREAM)
+ if selected: draw_rect(Rect2(Vector2(size.x/2-3,-5),Vector2(6,6)),UIStyle.GOLD)

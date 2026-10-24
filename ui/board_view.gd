@@ -22,7 +22,7 @@ func _ready() -> void:
  _resized()
 
 func _draw() -> void:
- draw_style_box(UIStyle.box(Color("152731"),Color("77939b"),12,8,0),Rect2(Vector2.ZERO,size))
+ UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size),Color("152731"),Color("91a6a4"),3)
  var inner: Rect2 = _inner()
  var cell_size: Vector2 = _cell_size()
  for index in range(16):

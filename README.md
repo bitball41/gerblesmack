@@ -2,7 +2,9 @@
 
 A native Godot Web 2048 roguelike: choose from 15 boards, build a Relic engine, clear eight floors, then continue in endless.
 
-The original illustrated interface, embedded fonts, card artwork, and tile colors are recreated with reusable Godot scenes. Tiles slide and pop, Relics pulse in scoring order, score gains float, and sounds scale with events. Keyboard input buffers through animation. Reduced motion is available in Settings.
+An original pixel-art presentation built from reusable Godot scenes: illustrated board portraits, a bitmap font, pixel cards and icons, and a stepped-color animated table. New runs use a portrait browser with a large preview, traits, drawbacks, and the actual starting kit.
+
+The shop stays on screen while balances count, coins move, and purchases fly into their slots. Packs fan out three cards to choose from. Tiles slide and pop, Relics pulse in scoring order, score gains float, and short chip sounds respond to actions. Keyboard input buffers through animation. Reduced motion is available in Settings.
 
 ## Controls
 
@@ -28,5 +30,7 @@ python3 tools/prepare_web.py build/web
 ```
 
 GitHub Actions runs both suites and publishes passing builds to GitHub Pages. No editor installation is required to play or deploy.
+
+Pixel assets are committed. To regenerate them from the original grid drawings, run `python3 tools/build_pixel_assets.py` with Pillow installed; this is optional for normal development and publishing.
 
 See [migration and scene notes](docs/PORTING.md), [asset provenance](assets/README.md), and [test provenance](tests/README.md). The Fracture content update is a separate next phase.

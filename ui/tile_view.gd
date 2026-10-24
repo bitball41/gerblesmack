@@ -18,10 +18,8 @@ func _draw() -> void:
  var palette: Array = UIStyle.tile_colors(exponent)
  var fx: Dictionary = value.get("fx",{})
  var edge: Color = Color("ffe59a") if fx.get("gold",false) else Color(palette[0]).lightened(.38)
- var panel: StyleBoxFlat = UIStyle.box(palette[0],edge,7,4,0)
- panel.border_width_bottom=6
- panel.border_color=Color(edge,.82)
- draw_style_box(panel,Rect2(Vector2.ZERO,size-Vector2(0,3)))
+ UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size-Vector2(0,4)),palette[0],edge,2)
+ draw_rect(Rect2(6,5,maxf(2,size.x*.25),2),Color(edge,.7))
  var text: String = UIStyle.tile_text(exponent)
  var font_size: int = int(size.x*.49)
  while UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>size.x-10 and font_size>10: font_size-=1
@@ -30,7 +28,8 @@ func _draw() -> void:
  draw_string(UIStyle.DISPLAY,baseline+Vector2(0,1),text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,Color("00000018"))
  draw_string(UIStyle.DISPLAY,baseline,text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,palette[1])
  if fx.get("glass",false):
-  draw_line(Vector2(size.x*.12,3),Vector2(size.x*.54,size.y-10),Color("ffffff25"),size.x*.12,true)
+  for index in range(7):
+   draw_rect(Rect2(8+index*4,6+index*int(size.y/9),8,6),Color("ffffff35"))
  var enhancement: String = ""
  for key in ["gold","steel","glass"]:
   if fx.get(key,false): enhancement+=("Au" if key=="gold" else "Fe" if key=="steel" else "◇")+" "
@@ -39,9 +38,7 @@ func _draw() -> void:
   var width: float = UIStyle.BOLD.get_string_size(enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small).x
   draw_string(UIStyle.BOLD,Vector2((size.x-width)/2,size.y-10),enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small,Color(palette[1],.8))
  if value.get("seal",false):
-  draw_circle(Vector2(size.x-12,12),7,Color("8f303b"))
-  draw_circle(Vector2(size.x-12,11),5,Color("f4836e"))
-  draw_circle(Vector2(size.x-12,11),2,Color("fff0c9"))
+  draw_texture_rect(UIStyle.sprite("seal"),Rect2(size.x-26,2,24,24),false)
 
 func pop(large: bool = false) -> void:
  if not motion_enabled: return

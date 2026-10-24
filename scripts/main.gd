@@ -5,7 +5,9 @@ const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
 const BUTTON_SCENE: PackedScene = preload("res://scenes/ui/action_button.tscn")
 const CARD_SCENE: PackedScene = preload("res://scenes/ui/card.tscn")
-const BOARD_OPTION = preload("res://ui/board_option.gd")
+const RUN_SELECT_SCENE: PackedScene = preload("res://scenes/ui/run_select.tscn")
+const SHOP_SCENE: PackedScene = preload("res://scenes/ui/shop.tscn")
+const PACK_SCENE: PackedScene = preload("res://scenes/ui/pack.tscn")
 @export_range(.06,.3) var slide_duration := .135
 @export_range(1,4) var buffered_input_limit := 3
 var g: Game = Game.new()
@@ -33,6 +35,8 @@ var _stick := Vector2.ZERO
 var _stick_latched := false
 var _record_floor := 0
 var _record_score = Num.new()
+var shop_view: Control
+var run_selector: Control
 var _toast_node: Label
 var _toast_panel: PanelContainer
 var auto_timer: Timer
@@ -55,6 +59,7 @@ func _ready() -> void:
  run_view.action_requested.connect(_run_action)
  run_view.item_inspected.connect(_inspect_item)
  run_view.relic_reordered.connect(_reorder_to)
+ run_view.wallet.count_tick.connect(func(): effects.play("coin"))
  run_view.board.swiped.connect(_request_move)
  run_view.board.cell_selected.connect(_tile_click)
  run_view.board.animation_finished.connect(_finish_move)
@@ -64,7 +69,9 @@ func _ready() -> void:
  auto_timer.timeout.connect(_tick_auto)
  add_child(auto_timer)
  has_run=g.load_run()
- if has_run: chosen_board=g.board_id
+ if has_run:
+  chosen_board=g.board_id
+  board_page=int(Cat.BOARDS.find(Cat.board(chosen_board))/10.0)
  _update_record()
  _show_home()
 
@@ -151,6 +158,8 @@ func _close_overlay() -> void:
  elif not home_active: _refresh_run(false)
 
 func _show_home() -> void:
+ effects.clear_transients(true)
+ backdrop.material.set_shader_parameter("shop",0.0)
  home_active=true
  _action_epoch+=1
  _stop_auto()
@@ -200,6 +209,7 @@ func _run_action(action: String) -> void:
 
 func _continue_run() -> void:
  if not has_run: return
+ run_view.wallet.reset(g.money)
  home_active=false
  home.hide()
  run_view.show()
@@ -215,7 +225,10 @@ func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -
  _stop_auto()
  awaiting_spell=-1
  first_target=-1
+ effects.clear_transients(true)
  g.new_run(board_id,run_seed.strip_edges().to_upper())
+ run_view.wallet.reset(g.money)
+ board_page=int(Cat.BOARDS.find(Cat.board(board_id))/10.0)
  chosen_board=board_id
  has_run=true
  home_active=false
@@ -223,6 +236,8 @@ func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -
  home.hide()
  run_view.show()
  _refresh_run()
+ effects.play("start")
+ effects.banner("FLOOR 1",run_view._gate_name.text)
 
 func _render() -> void:
  if home_active:
@@ -237,8 +252,11 @@ func _target_text() -> String:
  return Cat.name_for(id)+": "+("choose an empty cell" if first_target>=0 or action=="spawn" else "choose a tile")
 
 func _refresh_run(redraw: bool = true) -> void:
+ var income: bool = run_view.wallet._initialized and g.money.cmp(run_view.wallet.target_amount)>0
  run_view.motion_enabled=not reduced_motion
  run_view.sync(g,redraw,auto_on,auto_speed,_target_text())
+ backdrop.material.set_shader_parameter("shop",1.0 if g.phase=="shop" else 0.0)
+ if income: effects.coin_stream(Vector2(674,550),run_view.wallet.global_position+Vector2(36,28),7)
  if g.storage_error!="": _toast(g.storage_error)
 
 func _request_move(direction: String) -> void:
@@ -363,10 +381,10 @@ func _show_info(id: String, kind: String = "collection", index: int = -1, return
   if id=="battery": info.add_child(_paragraph("Stored points: "+str(int(relic.charge)),UIStyle.GOLD))
   if index>0: info.add_child(_button("MOVE LEFT",func(): _reorder_to(index,index-1); _show_info(id,kind,index-1,return_to)))
   if index<g.relics.size()-1: info.add_child(_button("MOVE RIGHT",func(): _reorder_to(index,index+1); _show_info(id,kind,index+1,return_to)))
-  if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): g.sell_relic(index); _refresh_run(false); _show_shop(),UIStyle.RED,Color("f4aa86")))
+  if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): _sell("relic",index),UIStyle.RED,Color("f4aa86")))
  elif kind=="inventory":
   if g.phase in ["play","shop"]: info.add_child(_button("USE",func(): _select_item(index),Color("438c75"),Color("84bd9c")))
-  if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): g.sell_item(index); _refresh_run(false); _show_shop(),UIStyle.RED,Color("f4aa86")))
+  if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): _sell("inventory",index),UIStyle.RED,Color("f4aa86")))
 
 func _select_item(index: int) -> void:
  if index<0 or index>=g.inventory.size(): return
@@ -439,72 +457,26 @@ func _show_result() -> void:
 func _show_shop() -> void:
  if g.phase!="shop": return
  if not g.pack_choices.is_empty(): _show_pack(); return
- var col: VBoxContainer = _open("THE SHOP","shop",Vector2(1138,590),true,280)
+ if overlay.visible and overlay.view_id=="shop" and is_instance_valid(shop_view) and shop_view.is_inside_tree():
+  shop_view.sync(g)
+  return
+ _stop_auto()
+ _input_buffer.clear()
+ _inspector_return=""
+ var host: Control = overlay.open_custom("shop",Vector2(1138,590),true,280)
  overlay.panel.position.x=280
  _shop_shade()
- var nav: HBoxContainer = UIStyle.row(12)
- col.add_child(nav)
- var wallet: Label = UIStyle.label("$"+g.money.fmt(),32,UIStyle.GOLD,true)
- wallet.size_flags_horizontal=Control.SIZE_EXPAND_FILL
- nav.add_child(wallet)
- var reroll: Button = _button("REROLL  ·  $%d" % g.reroll_cost(),func():
-  if g.reroll(): effects.play("buy"); _refresh_run(false); _show_shop()
-  else: _toast("Not enough money to reroll.")
- )
- reroll.disabled=g.money.cmp(g.reroll_cost())<0
- nav.add_child(reroll)
- nav.add_child(_button("NEXT GATE  →",func(): g.leave_shop(); overlay.close(); _refresh_run(),Color("438c75"),Color("84bd9c")))
- var shelf := HBoxContainer.new()
- shelf.add_theme_constant_override("separation",16)
- col.add_child(shelf)
- for offer_index in range(g.shop_offers.size()):
-  var id: String = g.shop_offers[offer_index]
-  var offer: VBoxContainer = UIStyle.column(9)
-  offer.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-  offer.custom_minimum_size.x=240
-  shelf.add_child(offer)
-  if id=="":
-   var sold: Label = UIStyle.label("SOLD",30,Color("7895a0"),true)
-   sold.custom_minimum_size=Vector2(0,258)
-   sold.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-   sold.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-   offer.add_child(sold)
-   continue
-  _offer_card(offer,id,188)
-  var description: Label = _paragraph(Cat.data_for(id).desc,UIStyle.MUTED,12)
-  description.custom_minimum_size.y=52
-  offer.add_child(description)
-  var row: HBoxContainer = UIStyle.row(9)
-  offer.add_child(row)
-  var price_label: Label = UIStyle.label("$%d" % g.cost_for(id),28,UIStyle.GOLD,true)
-  price_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-  row.add_child(price_label)
-  var buy: Button = _button("BUY",func(item: String = id): _buy(item),Color("438c75"),Color("84bd9c"),19)
-  buy.custom_minimum_size.x=74
-  buy.size_flags_horizontal=Control.SIZE_SHRINK_END
-  buy.disabled=not g.can_grant(id) or g.money.cmp(g.cost_for(id))<0
-  row.add_child(buy)
- var specials: HBoxContainer = UIStyle.row(18)
- col.add_child(specials)
- if g.shop_upgrade!="": _special_upgrade(specials,g.shop_upgrade)
- if not g.shop_pack_bought:
-  var pack: VBoxContainer = UIStyle.column(7)
-  pack.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-  specials.add_child(pack)
-  pack.add_child(UIStyle.label("SUPPLY PACK",23,UIStyle.CREAM,true))
-  pack.add_child(_paragraph("Choose 1 of 3 Relics, Spells, or Runes.",UIStyle.MUTED,12))
-  var cost: int = 0 if g.b().get("free_packs",false) else g.price(5)
-  var pack_button: Button = _button("OPEN PACK  ·  $%d" % cost,func():
-   if g.pack_open(): effects.play("buy"); _refresh_run(false); _show_pack()
-   else: _toast("Not enough money.")
-  ,Color("706390"),Color("b6a3c8"),18)
-  pack_button.disabled=g.money.cmp(cost)<0
-  pack.add_child(pack_button)
- if g.hp<g.max_hp and not g.shop_heal_bought:
-  col.add_child(_button("HEAL 1 LIFE  ·  $%d" % g.price(5),func():
-   if g.heal_shop(): effects.play("buy"); _refresh_run(false); _show_shop()
-   else: _toast("Not enough money to heal.")
-  ,Color("b96272"),Color("e8a2a5"),18))
+ shop_view=SHOP_SCENE.instantiate()
+ shop_view.motion_enabled=not reduced_motion
+ host.add_child(shop_view)
+ shop_view.size=Vector2(1138,590)
+ shop_view.buy_requested.connect(_buy)
+ shop_view.item_inspected.connect(func(id: String): _show_info(id,"offer",-1,"shop"))
+ shop_view.reroll_requested.connect(_reroll_shop)
+ shop_view.pack_requested.connect(_open_shop_pack)
+ shop_view.heal_requested.connect(_heal_shop)
+ shop_view.next_requested.connect(_leave_shop)
+ shop_view.sync(g)
 
 func _shop_shade() -> void:
  overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -513,104 +485,103 @@ func _shop_shade() -> void:
  shade.position=Vector2(270,260)
  shade.size=Vector2(1170,640)
 
-func _offer_card(parent: Node, id: String, height: int = 200, on_inspect: Callable = Callable()) -> Control:
- var card: Control = CARD_SCENE.instantiate()
- card.item_id=id
- card.custom_minimum_size=Vector2(0,height)
- card.size_flags_horizontal=Control.SIZE_EXPAND_FILL
- card.motion_enabled=not reduced_motion
- parent.add_child(card)
- if on_inspect.is_valid(): card.inspected.connect(on_inspect)
- else: card.inspected.connect(func(item: String): _show_info(item,"offer",-1,"shop"))
- return card
-
-func _special_upgrade(parent: Node, id: String) -> void:
- var col: VBoxContainer = UIStyle.column(7)
- col.size_flags_horizontal=Control.SIZE_EXPAND_FILL
- parent.add_child(col)
- col.add_child(UIStyle.label(Cat.name_for(id),23,UIStyle.GOLD,true))
- col.add_child(_paragraph(Cat.UPGRADES[id].desc,UIStyle.MUTED,12))
- var buy: Button = _button("BUY UPGRADE  ·  $%d" % g.cost_for(id),func(): _buy(id),Color("b78a50"),Color("dec290"),18)
- buy.disabled=not g.can_grant(id) or g.money.cmp(g.cost_for(id))<0
- col.add_child(buy)
-
-func _buy(id: String) -> void:
- if not g.buy_item(id): _toast("Check your balance and available slots."); return
+func _buy(id: String) -> bool:
+ var source: Rect2 = shop_view.source_rect(id) if is_instance_valid(shop_view) and shop_view.is_inside_tree() else Rect2(700,400,162,216)
+ var cost: int = g.cost_for(id)
+ if not g.buy_item(id):
+  effects.play("fail")
+  _toast("Check your balance and available slots.")
+  return false
+ _refresh_run(false)
+ _show_shop()
  effects.play("buy")
+ effects.coin_stream(run_view.wallet.global_position+Vector2(36,28),source.get_center(),mini(cost,8))
+ effects.acquire_card(id,source,run_view.destination_rect(id),run_view.card_for(id))
+ run_view.pulse_acquired(id,.34)
+ return true
+
+func _reroll_shop() -> void:
+ if not g.reroll(): _toast("Not enough money to reroll."); return
+ effects.play("shuffle")
+ effects.coin_stream(run_view.wallet.global_position+Vector2(36,28),Vector2(942,340),5)
+ _refresh_run(false)
+ _show_shop()
+
+func _open_shop_pack() -> void:
+ if not g.pack_open(): _toast("Not enough money."); return
+ effects.play("pack")
+ _refresh_run(false)
+ _show_pack()
+
+func _heal_shop() -> void:
+ if not g.heal_shop(): _toast("Not enough money to heal."); return
+ effects.play("buy")
+ effects.number_popup(Vector2(202,646),"+1 LIFE",UIStyle.RED)
+ effects.burst(Vector2(192,650),UIStyle.RED,8)
+ _refresh_run(false)
+ _show_shop()
+
+func _leave_shop() -> void:
+ if g.phase!="shop" or not g.pack_choices.is_empty(): return
+ g.leave_shop()
+ overlay.close()
+ _refresh_run()
+ effects.play("start")
+ effects.banner("FLOOR %d" % g.floor_num,run_view._gate_name.text)
+
+func _sell(kind: String, index: int) -> void:
+ var sold: bool = g.sell_relic(index) if kind=="relic" else g.sell_item(index)
+ if not sold: return
+ effects.play("cash")
  _refresh_run(false)
  _show_shop()
 
 func _show_pack() -> void:
- var col: VBoxContainer = _open("SUPPLY PACK  ·  CHOOSE ONE","pack",Vector2(850,590),false)
- var shelf: HBoxContainer = UIStyle.row(20)
- col.add_child(shelf)
- for id in g.pack_choices:
-  var option: VBoxContainer = UIStyle.column(10)
-  option.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-  option.custom_minimum_size.x=235
-  shelf.add_child(option)
-  _offer_card(option,id,250,func(item: String): _pick_pack(item))
-  var description: Label = _paragraph(Cat.data_for(id).desc,UIStyle.MUTED,13)
-  description.custom_minimum_size.y=52
-  option.add_child(description)
-  var choose: Button = _button("CHOOSE",func(item: String = id): _pick_pack(item),Color("438c75"),Color("84bd9c"))
-  choose.disabled=not g.can_grant(id)
-  option.add_child(choose)
- col.add_child(_button("SKIP PACK",func(): g.pack_choices=[]; g.save_run(); _show_shop()))
+ _stop_auto()
+ _input_buffer.clear()
+ _inspector_return=""
+ var host: Control = overlay.open_custom("pack",Vector2(1138,590),false,280)
+ overlay.panel.position.x=280
+ _shop_shade()
+ var pack: Control = PACK_SCENE.instantiate()
+ pack.choices=g.pack_choices.duplicate()
+ pack.motion_enabled=not reduced_motion
+ for id in pack.choices: pack.available[id]=g.can_grant(id)
+ host.add_child(pack)
+ pack.size=Vector2(1138,590)
+ pack.picked.connect(_pick_pack)
+ pack.skipped.connect(func(): g.pack_choices=[]; g.save_run(); _show_shop())
 
 func _pick_pack(id: String) -> void:
+ var source := Rect2(638,260,162,216)
+ var cards: Array = overlay.find_children("*","Button",true,false).filter(func(node): return node.get_script()!=null and node.get_script().resource_path=="res://ui/card_view.gd")
+ for card in cards:
+  if card.item_id==id: source=card.get_global_rect(); break
  if not g.pack_choose(id): _toast("Your slots are full, or you already own that Relic."); return
  effects.play("buy")
  _refresh_run(false)
  _show_shop()
+ effects.acquire_card(id,source,run_view.destination_rect(id),run_view.card_for(id))
+ run_view.pulse_acquired(id,.34)
 
 func _show_new_run() -> void:
- var col: VBoxContainer = _open("CHOOSE YOUR BOARD","new",Vector2(1100,750))
- var tabs: HBoxContainer = UIStyle.row(12)
- col.add_child(tabs)
- tabs.add_child(_button("BOARDS 1–10",func(): board_page=0; _show_new_run(),Color("345a66"),UIStyle.GOLD if board_page==0 else Color("7b9eaa")))
- tabs.add_child(_button("BOARDS 11–15",func(): board_page=1; _show_new_run(),Color("345a66"),UIStyle.GOLD if board_page==1 else Color("7b9eaa")))
- var grid := GridContainer.new()
- grid.columns=5
- grid.add_theme_constant_override("h_separation",12)
- grid.add_theme_constant_override("v_separation",12)
- col.add_child(grid)
- for index in range(board_page*10,mini(Cat.BOARDS.size(),board_page*10+10)):
-  var definition: Dictionary = Cat.BOARDS[index]
-  var option: Button = BOARD_OPTION.new()
-  option.definition=definition
-  option.board_id=definition.id
-  option.selected=definition.id==chosen_board
-  option.custom_minimum_size=Vector2(198,87)
-  option.tooltip_text=definition.desc+"\n"+str(definition.get("downside",""))
-  option.pressed.connect(func(id: String = definition.id): chosen_board=id; _show_new_run())
-  grid.add_child(option)
-  if definition.id==chosen_board: option.grab_focus.call_deferred()
- var selected: Dictionary = Cat.board(chosen_board)
- col.add_child(UIStyle.label(selected.name.to_upper()+"  ·  "+selected.headline,28,UIStyle.GOLD,true))
- col.add_child(_paragraph(selected.desc,UIStyle.CREAM,16))
- if selected.has("downside"): col.add_child(_paragraph(selected.downside,Color("f4b49b"),15))
- var stats: HBoxContainer = UIStyle.row(14)
- col.add_child(stats)
- for stat in [["STARTING LIFE",str(selected.get("max_hp",3))],["OPENING MOVES",str(18+int(selected.get("moves",0)))],["STARTING BALANCE","$"+str(selected.get("start_money",12))]]:
-  var panel: PanelContainer = UIStyle.panel(Color("19323e"),Color("4f6e77"))
-  panel.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-  stats.add_child(panel)
-  var stack: VBoxContainer = UIStyle.column(5)
-  panel.add_child(stack)
-  stack.add_child(UIStyle.label(stat[0],11,UIStyle.MUTED))
-  stack.add_child(UIStyle.label(stat[1],34,UIStyle.GOLD,true))
- col.add_child(UIStyle.label("SEED   ·   LEAVE BLANK FOR RANDOM",11,UIStyle.MUTED))
- var seed_field := LineEdit.new()
- seed_field.name="Seed"
- seed_field.text=seed_input
- seed_field.placeholder_text="RANDOM SEED"
- seed_field.max_length=64
- seed_field.custom_minimum_size.y=48
- seed_field.text_changed.connect(func(value: String): seed_input=value)
- seed_field.text_submitted.connect(func(_value: String): start_run(chosen_board,seed_input))
- col.add_child(seed_field)
- col.add_child(_button("START RUN  →",func(): start_run(chosen_board,seed_input),Color("438c75"),Color("84bd9c"),27))
+ _stop_auto()
+ _input_buffer.clear()
+ _inspector_return=""
+ var host: Control = overlay.open_custom("new",Vector2(1240,790),true,55)
+ run_selector=RUN_SELECT_SCENE.instantiate()
+ run_selector.chosen_board=chosen_board
+ run_selector.page=board_page
+ run_selector.seed_text=seed_input
+ run_selector.motion_enabled=not reduced_motion
+ host.add_child(run_selector)
+ run_selector.size=Vector2(1240,790)
+ run_selector.board_selected.connect(func(id: String): chosen_board=id)
+ run_selector.page_changed.connect(func(index: int): board_page=index)
+ run_selector.seed_changed.connect(func(value: String): seed_input=value)
+ run_selector.start_requested.connect(start_run)
+ run_selector.cancel_requested.connect(_close_overlay)
+ run_selector.navigated.connect(func(): effects.play("select"))
 
 func _show_menu() -> void:
  var col: VBoxContainer = _open("PAUSED","menu",Vector2(470,520))
@@ -661,7 +632,7 @@ func _show_settings() -> void:
  var col: VBoxContainer = _open("SETTINGS","settings",Vector2(610,650))
  col.add_child(_button("SOUND EFFECTS  ·  "+("ON" if sound_on else "OFF"),func(): _toggle_sound(); _show_settings()))
  col.add_child(_button("REDUCED MOTION  ·  "+("ON" if reduced_motion else "OFF"),func(): _toggle_motion(); _show_settings()))
- col.add_child(_paragraph("Reduced motion stops the background drift, card tilt, tile pops, particles, and score popups. Moves resolve immediately.",UIStyle.MUTED,13))
+ col.add_child(_paragraph("Stops background drift, tile/card motion, flying coins, and animated counters. Moves resolve instantly.",UIStyle.MUTED,13))
  col.add_child(_button("AUTOPLAYER SPEED  ·  %d×" % auto_speed,func(): _cycle_speed(); _show_settings()))
  col.add_child(_button("TOGGLE FULLSCREEN",_toggle_fullscreen))
  if has_run: col.add_child(_button("EXPORT SAVED RUN",func(): _save_dialog(false)))
@@ -694,6 +665,7 @@ func _save_dialog(importing: bool) -> void:
 func _toggle_sound() -> void:
  sound_on=not sound_on
  effects.sound_enabled=sound_on
+ if not sound_on: effects.stop_audio()
  _update_sound_icons()
  _save_preferences()
  effects.play("click")
@@ -704,8 +676,17 @@ func _toggle_motion() -> void:
  run_view.motion_enabled=not reduced_motion
  home.motion_enabled=not reduced_motion
  overlay.motion_enabled=not reduced_motion
+ run_view.wallet.motion_enabled=not reduced_motion
+ if is_instance_valid(shop_view) and shop_view.is_inside_tree():
+  shop_view.motion_enabled=not reduced_motion
+  shop_view.wallet.motion_enabled=not reduced_motion
+ if is_instance_valid(run_selector) and run_selector.is_inside_tree(): run_selector.motion_enabled=not reduced_motion
+ if reduced_motion:
+  effects.clear_transients()
+  run_view.wallet.reset(g.money)
+  if is_instance_valid(shop_view) and shop_view.is_inside_tree(): shop_view.wallet.reset(g.money)
  backdrop.material.set_shader_parameter("motion",0.0 if reduced_motion else 1.0)
- for card in run_view.relic_cards+run_view.pocket_cards: card.motion_enabled=not reduced_motion
+ for card in run_view.relic_cards+run_view.pocket_cards: card.set_motion(not reduced_motion)
  run_view.board.motion_enabled=not reduced_motion
  _save_preferences()
 
@@ -762,6 +743,6 @@ func _toast(text: String) -> void:
  tween.tween_callback(panel.queue_free)
 
 func _update_sound_icons() -> void:
- var texture: Texture2D = load("res://assets/art/ui_sound.svg" if sound_on else "res://assets/art/ui_mute.svg")
+ var texture: Texture2D = UIStyle.sprite("ui_sound" if sound_on else "ui_mute")
  for icon in [home.sound_icon,run_view.sound_icon]:
   if is_instance_valid(icon): icon.texture=texture

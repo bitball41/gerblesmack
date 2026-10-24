@@ -57,16 +57,19 @@ func _refresh() -> void:
  rarity.add_theme_font_size_override("font_size",9)
  caption.add_theme_font_override("font",UIStyle.BOLD)
  caption.add_theme_font_size_override("font_size",10)
- illustration.texture=load("res://assets/art/"+data.art+".svg")
- illustration.modulate=colors[1]
+ illustration.texture=UIStyle.sprite(data.art)
+ illustration.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+ illustration.modulate=Color.WHITE
  tooltip_text=data.name+"\n"+data.desc
  queue_redraw()
 
 func _layout() -> void:
  pivot_offset=size*Vector2(.5,.85)
  if not is_node_ready(): return
- illustration.position=Vector2(6,size.y*.12)
- illustration.size=Vector2(size.x-12,size.y*.53)
+ var art_size: float = floorf(minf(size.x-18,size.y*.49)/2)*2
+ illustration.position=Vector2(floorf((size.x-art_size)/2),floorf(size.y*.15))
+ illustration.size=Vector2(art_size,art_size)
+ rarity.visible=size.x>=100
  rarity.position=Vector2(8,8)
  rarity.size=Vector2(size.x-16,14)
  caption.position=Vector2(5,size.y-21)
@@ -90,6 +93,10 @@ func _layout() -> void:
   for line in lines: widest=maxf(widest,UIStyle.DISPLAY.get_string_size(line,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x)
   if widest<=size.x-12: break
   font_size-=1
+ if size.x<90:
+  var max_letters: int = maxi(2,int((size.x-12)/(font_size*.6)))
+  for index in range(lines.size()):
+   if lines[index].length()>max_letters: lines[index]=lines[index].left(max_letters-1)+"."
  title.autowrap_mode=TextServer.AUTOWRAP_OFF
  title.vertical_alignment=VERTICAL_ALIGNMENT_TOP
  title.add_theme_font_size_override("font_size",font_size)
@@ -104,11 +111,12 @@ func _draw() -> void:
  var colors: Array = UIStyle.colors(item_id)
  var ink: Color = Color(colors[1],.15)
  draw_rect(Rect2(Vector2(5,5),size-Vector2(10,13)),ink,false,1)
- for index in range(-3,12):
-  var x: float = index*23.0
-  draw_line(Vector2(clampf(x,0,size.x),5),Vector2(clampf(x+size.y,0,size.x),size.y-8),Color(colors[1],.018),2,true)
- var diamond := PackedVector2Array([Vector2(size.x-14,9),Vector2(size.x-9,14),Vector2(size.x-14,19),Vector2(size.x-19,14)])
- draw_colored_polygon(diamond,colors[1])
+ draw_rect(Rect2(5,5,size.x-10,3),Color(colors[1],.6))
+ draw_rect(Rect2(5,size.y-11,size.x-10,3),Color(colors[0]).darkened(.4))
+ for y in range(15,int(size.y)-15,12):
+  for x in range(9,int(size.x)-10,12):
+   if (x+y)%24==0: draw_rect(Rect2(x,y,2,2),Color(colors[1],.1))
+ draw_rect(Rect2(size.x-16,11,6,6),colors[1])
 
 func _tilt(entered: bool) -> void:
  if not motion_enabled: return
@@ -125,6 +133,15 @@ func pulse(delay: float = 0.0) -> void:
  _pulse.tween_interval(delay)
  _pulse.tween_property(self,"self_modulate",Color(1.38,1.25,1.06),.055)
  _pulse.tween_property(self,"self_modulate",Color.WHITE,.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+func set_motion(enabled: bool) -> void:
+ motion_enabled=enabled
+ if enabled: return
+ if _hover and _hover.is_valid(): _hover.kill()
+ if _pulse and _pulse.is_valid(): _pulse.kill()
+ scale=Vector2.ONE
+ rotation=_rest_rotation
+ self_modulate=Color.WHITE
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
  if drag_index<0: return null
@@ -151,7 +168,7 @@ func _gui_input(event: InputEvent) -> void:
 
 func _make_custom_tooltip(for_text: String) -> Object:
  var result: PanelContainer = UIStyle.panel(Color("152e3c"),Color("8caaa9"))
- var text: Label = UIStyle.label(for_text,14,UIStyle.CREAM,false,true)
- text.custom_minimum_size.x=270
+ var text: Label = UIStyle.label(for_text,18,UIStyle.CREAM,false,true)
+ text.custom_minimum_size.x=360
  result.add_child(text)
  return result

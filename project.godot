@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="GATEFOLD"
-config/icon="res://assets/app_icon.svg"
+config/icon="res://assets/pixel/app_icon.png"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0.06, 0.16, 0.20, 1)
 run/main_scene="res://scenes/main.tscn"
@@ -16,6 +16,9 @@ window/size/window_width_override=1280
 window/size/window_height_override=800
 
 [rendering]
+textures/canvas_textures/default_texture_filter=0
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false

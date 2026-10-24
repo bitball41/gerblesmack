@@ -18,13 +18,19 @@ func check(okay: bool, label_text: String) -> void:
 func run() -> void:
  ui=MAIN_SCENE.instantiate()
  root.add_child(ui)
+ # Inspect generated audio directly; the headless dummy mixer need not play voices.
+ ui.effects.sound_enabled=false
+ var chip: AudioStreamWAV = ui.effects._synthesize("buy",0)
+ check(chip.mix_rate==22050 and chip.format==AudioStreamWAV.FORMAT_16_BITS,"purchase sound is a valid chip PCM stream")
+ check(chip.data.size()>1000 and chip.data.count(0)<chip.data.size(),"purchase sound contains an audible waveform")
+ chip=null
  ui.g.persist_enabled=false
  if ui.reduced_motion: ui._toggle_motion()
  await process_frame
  check(ui.home_active and ui.home.visible,"opens on composed title screen")
  check(ui.home.find_children("*","Button",true,false).size()>=8,"title artwork and menu built")
  var title: Label = ui.home.get_node("Title")
- check(title.get_theme_font("font").resource_path=="res://assets/fonts/display.ttf","original display font restored")
+ check(title.get_theme_font("font").resource_path=="res://assets/fonts/pixel.fnt","native bitmap font throughout the game")
  check(title.size.x>=500,"title does not wrap into a column")
  for definition in Game.Cat.BOARDS:
   ui.start_run(definition.id,"UI-TEST")
@@ -94,6 +100,60 @@ func run() -> void:
  await process_frame
  var board_choices: Array = ui.overlay.find_children("*","Button",true,false).filter(func(button): return button.get_script()!=null and button.get_script().resource_path=="res://ui/board_option.gd")
  check(board_choices.size()==5,"five additional boards have their own page")
+ var active_rng: int = ui.g.rng.state
+ var active_board: String = ui.g.board_id
+ ui.run_selector._select("archivist")
+ check(ui.run_selector.hero.texture.resource_path.ends_with("board_archivist.png"),"selection shows distinct pixel board artwork")
+ check(ui.run_selector._stats[0].text=="2" and ui.run_selector._stats[3].text=="5","selection uses actual board starting rules")
+ check(ui.run_selector._loadout.get_child_count()==12,"starting kit includes relics, upgrade, and three runes")
+ check(ui.g.rng.state==active_rng and ui.g.board_id==active_board,"selection preview cannot change the active run or RNG")
+ ui.run_selector.seed_field.text_changed.emit("KEPT-SEED")
+ var selector_id: int = ui.run_selector.get_instance_id()
+ ui.run_selector._set_page(0)
+ check(ui.run_selector.get_instance_id()==selector_id and ui.seed_input=="KEPT-SEED","page browsing preserves the selector and seed")
+ ui.run_selector._select("chronicle")
+ check(ui.run_selector._stats[1].text=="21","move preview includes starting upgrades")
+ for pool in [Game.Cat.RELICS,Game.Cat.SPELLS,Game.Cat.RUNES,Game.Cat.UPGRADES]:
+  for id in pool:
+   check(ResourceLoader.exists("res://assets/pixel/"+str(pool[id].art)+".png"),"pixel art covers "+id)
+ ui.start_run("classic","TRANSACTIONS")
+ ui.g.finish_gate(true)
+ ui.g.open_shop()
+ ui.g.shop_offers=["corner","mercy","venus","echo"]
+ ui.g.shop_upgrade="moves1"
+ ui.g.money=Num.new(100)
+ ui.run_view.wallet.reset(ui.g.money)
+ ui._refresh_run(false)
+ ui._show_shop()
+ await process_frame
+ var shop_id: int = ui.shop_view.get_instance_id()
+ var wallet_id: int = ui.shop_view.wallet.get_instance_id()
+ var first_cost: int = ui.g.cost_for("corner")
+ check(ui._buy("corner"),"purchase commits immediately")
+ var after_first = ui.g.money
+ check(after_first.cmp(100-first_cost)==0,"purchase charges the exact cost")
+ check(not ui._buy("corner") and ui.g.money.cmp(after_first)==0,"repeat purchase cannot charge twice during an animation")
+ check(ui.shop_view.get_instance_id()==shop_id and ui.shop_view.wallet.get_instance_id()==wallet_id,"purchase preserves the shop and money counter")
+ var second_cost: int = ui.g.cost_for("mercy")
+ check(ui._buy("mercy") and ui.g.money.cmp(after_first.minus(second_cost))==0,"another purchase works while earlier feedback is running")
+ check(ui.run_view.card_for("mercy").modulate.a==0.0,"acquisition travels before appearing in its slot")
+ await create_timer(.85).timeout
+ check(ui.shop_view.wallet.value_label.text==ui.g.money.fmt() and ui.run_view.wallet.value_label.text==ui.g.money.fmt(),"both animated balances settle at the authoritative amount")
+ check(ui.run_view.card_for("mercy").modulate.a==1.0,"acquisition reveals its destination after arrival")
+ var stale_flights: Array = ui.effects.get_children().filter(func(node): return node is Button and node.has_meta("transient"))
+ check(stale_flights.is_empty(),"card flights clean themselves up")
+ ui._open_shop_pack()
+ await process_frame
+ check(ui.overlay.view_id=="pack" and not ui.overlay.closable,"pack reveal preserves the pending choice")
+ var pick: String = ""
+ for id in ui.g.pack_choices:
+  if ui.g.can_grant(id): pick=id; break
+ check(pick!="","pack provides a usable choice")
+ ui._pick_pack(pick)
+ check(ui.g.pack_choices.is_empty() and ui.overlay.view_id=="shop","taking a pack card returns to the shop")
+ ui._go_home()
+ await process_frame
+ check(ui.effects.get_children().filter(func(node): return node.has_meta("transient")).is_empty(),"leaving a run cancels transient card and coin effects")
  ui._show_help()
  await process_frame
  ui._show_settings()

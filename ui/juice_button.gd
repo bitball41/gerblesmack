@@ -7,11 +7,14 @@ const UIStyle = preload("res://ui/skin.gd")
 @export var motion_enabled: bool = true
 @export var padding: int = 12
 var _hover: Tween
+var _text_key := ""
 
 func _ready() -> void:
+ clip_text=true
  if text.contains("→"):
   text=text.replace("→","").strip_edges()
   var arrow: TextureRect = UIStyle.texture("ui_right",text_color)
+  arrow.name="ActionArrow"
   add_child(arrow)
   arrow.position=Vector2(size.x-33,(size.y-21)/2)
   arrow.size=Vector2(21,21)
@@ -38,6 +41,21 @@ func _ready() -> void:
  mouse_exited.connect(_exited)
  resized.connect(func(): pivot_offset=size*.5)
  pivot_offset=size*.5
+
+func _process(_delta: float) -> void:
+ var key: String = text+str(size.x)+str(display_size)
+ if key==_text_key: return
+ _text_key=key
+ var font_size: int = display_size
+ var available: float = size.x-padding*2-4-(30 if has_node("ActionArrow") else 0)
+ while font_size>12 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=1
+ add_theme_font_size_override("font_size",font_size)
+
+func _draw() -> void:
+ if size.x<10 or size.y<10: return
+ var light: Color = edge_color.lightened(.12) if is_hovered() and not disabled else edge_color
+ draw_rect(Rect2(3,3,size.x-6,2),Color(light,.8))
+ draw_rect(Rect2(3,size.y-6,size.x-6,3),Color(base_color.darkened(.45),.8))
 
 func _entered() -> void:
  if disabled or not motion_enabled: return

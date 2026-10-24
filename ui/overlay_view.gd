@@ -66,6 +66,19 @@ func open(title_text: String, id: String, dimensions: Vector2 = Vector2(930,710)
  return body
 
 func close() -> void:
+ if _open_tween and _open_tween.is_valid(): _open_tween.kill()
  visible=false
  view_id=""
  for node in get_children(): remove_child(node); node.queue_free()
+
+func open_custom(id: String, dimensions: Vector2, can_close: bool = true, top: float = -1) -> Control:
+ open("",id,dimensions,false,top)
+ closable=can_close
+ for child in panel.get_children(): panel.remove_child(child); child.queue_free()
+ panel.add_theme_stylebox_override("panel",UIStyle.box(Color("293b45"),Color("98b2b3"),0,7,0))
+ body=null
+ var host := Control.new()
+ host.name="CustomView"
+ panel.add_child(host)
+ panel.size=dimensions
+ return host

@@ -5,6 +5,7 @@ const Game = preload("res://scripts/game.gd")
 const BUTTON_SCENE: PackedScene = preload("res://scenes/ui/action_button.tscn")
 const CARD_SCENE: PackedScene = preload("res://scenes/ui/card.tscn")
 const TILE_SCENE: PackedScene = preload("res://scenes/ui/tile.tscn")
+const WALLET_SCENE: PackedScene = preload("res://scenes/ui/wallet.tscn")
 signal action_requested(action: String)
 signal item_inspected(kind: String, index: int)
 signal relic_reordered(from_index: int, to_index: int)
@@ -23,6 +24,7 @@ var _remaining: Label
 var _progress: ProgressBar
 var _moves: Label
 var _money: Label
+var wallet: Control
 var _hearts: Control
 var _floor: Label
 var _route: Control
@@ -105,7 +107,10 @@ func _build() -> void:
  _text("MOVES",Rect2(40,518,87,18),11,UIStyle.MUTED).horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
  _text("BALANCE",Rect2(149,518,87,18),11,UIStyle.MUTED).horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
  _moves=_text("18",Rect2(40,543,87,56),45,UIStyle.BLUE,true)
- _money=_text("$12",Rect2(149,543,87,56),40,UIStyle.GOLD,true)
+ wallet=WALLET_SCENE.instantiate()
+ wallet.display_size=38
+ UIStyle.place(wallet,self,Rect2(152,543,82,56))
+ _money=wallet.value_label
  _moves.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
  _money.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
  _panel(Rect2(34,629,208,50),Color("192b34"),Color("445a65"))
@@ -158,9 +163,10 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  if not _built: return
  var target = game.target()
  _target_label.text=target.fmt()
- _target_label.add_theme_font_size_override("font_size",51 if _target_label.text.length()<8 else 34)
+ UIStyle.fit(_target_label,50,18)
  _gate_subtitle.text="GATE %d / 3" % (game.gate+1)
  _gate_name.text=game.guardian().name.to_upper() if game.gate==2 else ["ENTRY GATE","INNER GATE"][game.gate]
+ UIStyle.fit(_gate_name,24)
  _guardian_note.text=game.guardian().desc if game.gate==2 else ""
  var score_text: String = game.score.fmt()
  if score_text!=_last_score:
@@ -172,7 +178,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
    _score_label.text=score_text
    _displayed_score=game.score.to_float() if game.score.e<12 else 0.0
   _last_score=score_text
- _score_label.add_theme_font_size_override("font_size",60 if score_text.length()<8 else 39)
+ UIStyle.fit(_score_label,60,18)
  var ratio: float = clampf(pow(10,game.score.log10_value()-target.log10_value()),0,1) if game.score.m>0 else 0.0
  if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
  if motion_enabled:
@@ -182,14 +188,15 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _remaining.text="GATE CLEARED" if ratio>=1 else target.minus(game.score).fmt()+" TO GO"
  _moves.text=str(game.moves)
  _moves.add_theme_color_override("font_color",UIStyle.RED if game.moves<=5 else UIStyle.BLUE)
- _money.text="$"+game.money.fmt()
- _money.add_theme_font_size_override("font_size",40 if _money.text.length()<5 else 24)
+ wallet.motion_enabled=motion_enabled
+ wallet.set_amount(game.money)
  for child in _hearts.get_children(): _hearts.remove_child(child); child.queue_free()
  var heart_size: int = 23 if game.max_hp<=5 else 17
  for index in range(game.max_hp):
-  var heart: TextureRect = UIStyle.texture("ui_heart",UIStyle.RED if index<game.hp else Color("51616c"))
+  var heart: TextureRect = UIStyle.texture("ui_heart")
+  heart.modulate=Color.WHITE if index<game.hp else Color(.28,.33,.38)
   UIStyle.place(heart,_hearts,Rect2(144-game.max_hp*(heart_size+3)+index*(heart_size+3),5,heart_size,heart_size))
- _floor.text="%d / %s" % [game.floor_num,"∞" if game.endless else "8"]
+ _floor.text="%d / %s" % [game.floor_num,"INF" if game.endless else "8"]
  for child in _route.get_children(): _route.remove_child(child); child.queue_free()
  for index in range(3):
   var step: PanelContainer = UIStyle.panel(UIStyle.GREEN if index<game.gate else UIStyle.GOLD if index==game.gate else Color("101f28"),Color("6d848d"),0)
@@ -198,7 +205,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _next.configure(game.next_tile)
  _spawn_badge.text="TIER %d" % (int(game.rune_levels.spawn)+1)
  _receipt_points.text="+"+game.last_merge.fmt()
- _receipt_points.add_theme_font_size_override("font_size",55 if _receipt_points.text.length()<9 else 36)
+ UIStyle.fit(_receipt_points,54,18)
  _receipt_counts.text="MERGES %d     TRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
  _seed.text=game.b().name.to_upper()+" BOARD · SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
@@ -279,6 +286,23 @@ func _sync_upgrades(game: Game) -> void:
   icon.mouse_filter=Control.MOUSE_FILTER_STOP
   icon.tooltip_text=Cat.UPGRADES[id].name+"\n"+Cat.UPGRADES[id].desc
 
+func destination_rect(id: String) -> Rect2:
+ var destination: Control = card_for(id)
+ return destination.get_global_rect() if destination!=null else Rect2(Vector2(1000,706),Vector2(40,40))
+
+func card_for(id: String) -> Control:
+ for card in relic_cards:
+  if card.item_id==id: return card
+ for index in range(pocket_cards.size()-1,-1,-1):
+  if pocket_cards[index].item_id==id: return pocket_cards[index]
+ for icon in _upgrade_zone.get_children():
+  if icon is TextureRect and icon.tooltip_text.begins_with(Cat.name_for(id)+"\n"): return icon
+ return null
+
+func pulse_acquired(id: String, delay: float = 0.0) -> void:
+ for card in relic_cards+pocket_cards:
+  if card.item_id==id: card.pulse(delay)
+
 func pulse_scoring(game: Game) -> void:
  if not motion_enabled: return
  var order := 0
@@ -294,3 +318,4 @@ func pulse_scoring(game: Game) -> void:
 func _draw_score(value: float) -> void:
  _displayed_score=value
  _score_label.text=UIStyle.number(roundf(value))
+ UIStyle.fit(_score_label,60,18)

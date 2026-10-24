@@ -33,7 +33,7 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --path . --quit-after 5 2>&1 | tee godot-smoke.log
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call" godot-smoke.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:" godot-smoke.log; then
             exit 1
           fi
       - name: Legacy rules and save regression checks
@@ -41,7 +41,7 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --path . --script tests/regression.gd 2>&1 | tee regression.log
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|FAIL:" regression.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" regression.log; then
             exit 1
           fi
       - name: UI and autoplay smoke test
@@ -49,7 +49,7 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --path . --script tests/ui_smoke.gd 2>&1 | tee ui-smoke.log
-          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|FAIL:" ui-smoke.log; then
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" ui-smoke.log; then
             exit 1
           fi
       - name: Build web version
