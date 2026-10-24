@@ -5,3 +5,7 @@ Active Relic illustrations are original 64px drawings in `plates/`, with editabl
 The ivory print framing, dark ink, upper-left highlights, muted card palettes, and quiet teal table form the shared style. Original catalog names, colors, and rules are retained. The older SVGs and Nimbus fonts remain reference material excluded from the Web export.
 
 `audio/` contains original PCM effects built by `tools/build_sound_assets.py`: filtered noise for paper, damped resonators for wood and bronze, and short struck chords for milestones. No audio or imagery from the reference games is included.
+
+## Current interface typography
+
+`type/PixelOperator.ttf` and `type/PixelOperator-Bold.ttf` are Pixel Operator by Jayvee Enaguas (HarvettFox96), licensed CC0 1.0. The original license is in `type/LICENSE.txt`. Source listing: https://www.dafont.com/pixel-operator.font ; creator repository: https://notabug.org/HarvettFox96/ttf-pixeloperator . The earlier homemade bitmap font remains for provenance but is no longer the interface default.

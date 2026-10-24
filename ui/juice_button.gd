@@ -46,9 +46,9 @@ func _process(_delta: float) -> void:
  var key: String = text+str(size.x)+str(display_size)
  if key==_text_key: return
  _text_key=key
- var font_size: int = display_size
+ var font_size: int = UIStyle.pixel_font_size(display_size)
  var available: float = size.x-padding*2-4-(30 if has_node("ActionArrow") else 0)
- while font_size>12 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=1
+ while font_size>32 and UIStyle.DISPLAY.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>available: font_size-=16
  add_theme_font_size_override("font_size",UIStyle.pixel_font_size(font_size))
 
 func _draw() -> void:
@@ -58,12 +58,7 @@ func _draw() -> void:
  draw_rect(Rect2(3,size.y-6,size.x-6,3),Color(base_color.darkened(.45),.8))
 
 func _entered() -> void:
- if disabled or not motion_enabled: return
- if _hover and _hover.is_valid(): _hover.kill()
- _hover=create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
- _hover.tween_property(self,"scale",Vector2(1.018,1.018),.13)
+ queue_redraw()
 
 func _exited() -> void:
- if _hover and _hover.is_valid(): _hover.kill()
- _hover=create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
- _hover.tween_property(self,"scale",Vector2.ONE,.13)
+ queue_redraw()

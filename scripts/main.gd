@@ -7,6 +7,7 @@ const BUTTON_SCENE: PackedScene = preload("res://scenes/ui/action_button.tscn")
 const CARD_SCENE: PackedScene = preload("res://scenes/ui/card.tscn")
 const RUN_SELECT_SCENE: PackedScene = preload("res://scenes/ui/run_select.tscn")
 const SHOP_SCENE: PackedScene = preload("res://scenes/ui/shop.tscn")
+const GATE_SELECT_SCENE: PackedScene = preload("res://scenes/ui/gate_select.tscn")
 const PACK_SCENE: PackedScene = preload("res://scenes/ui/pack.tscn")
 @export_range(.06,.3) var slide_duration := .135
 @export_range(1,4) var buffered_input_limit := 3
@@ -39,6 +40,10 @@ var shop_view: Control
 var run_selector: Control
 var _toast_node: Label
 var _toast_panel: PanelContainer
+var _context_key := ""
+var _context_source: WeakRef
+var _preview_source: WeakRef
+var gate_selector: Control
 var context_panel: PanelContainer
 var auto_timer: Timer
 @onready var home: Control = $Home
@@ -49,8 +54,9 @@ var auto_timer: Timer
 
 func _ready() -> void:
  set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
- size=Vector2(1440,900)
- scale=Vector2(2.0/3.0,2.0/3.0)
+ size=get_viewport_rect().size
+ scale=Vector2.ONE
+ add_to_group("card_inspection_host")
  theme=UIStyle.default_theme()
  _load_preferences()
  effects.sound_enabled=sound_on
@@ -78,6 +84,8 @@ func _ready() -> void:
   board_page=int(Cat.BOARDS.find(Cat.board(chosen_board))/10.0)
  _update_record()
  _show_home()
+ get_viewport().size_changed.connect(_layout_canvas)
+ _layout_canvas()
 
 func _notification(what: int) -> void:
  if what==NOTIFICATION_WM_CLOSE_REQUEST: g.save_run()
@@ -88,7 +96,12 @@ func _input(event: InputEvent) -> void:
    _clear_context()
    get_viewport().set_input_as_handled()
    return
-  if event is InputEventMouseButton and event.pressed and not context_panel.get_global_rect().has_point(get_global_mouse_position()): _clear_context()
+  if event is InputEventMouseButton and event.pressed and not context_panel.get_global_rect().has_point(get_global_mouse_position()):
+   var source: Control = _context_source.get_ref() as Control if _context_source else null
+   var over_source: bool = is_instance_valid(source) and source.get_global_rect().has_point(get_global_mouse_position())
+   if is_instance_valid(source) and _context_key.begins_with("offer:"):
+    over_source=over_source or source.get_parent().get_global_rect().has_point(get_global_mouse_position())
+   if not over_source: _clear_context()
  # Gameplay owns directional input even if a card was last focused.
  if event is InputEventKey and not home_active and not overlay.visible:
   if event.pressed and not event.alt_pressed and not event.ctrl_pressed and not event.meta_pressed:
@@ -98,7 +111,8 @@ func _input(event: InputEvent) -> void:
     get_viewport().set_input_as_handled()
  if event is InputEventJoypadButton and event.pressed:
   if event.button_index in [JOY_BUTTON_START,JOY_BUTTON_B]:
-   if overlay.visible and overlay.closable: _close_overlay()
+   if overlay.visible and overlay.view_id in ["shop","gates"]: _show_settings()
+   elif overlay.visible and overlay.closable: _close_overlay()
    elif awaiting_spell>=0: _cancel_target()
    elif not home_active and not overlay.visible: _show_menu()
    get_viewport().set_input_as_handled()
@@ -119,7 +133,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
  var key_event: InputEventKey = event
  if key_event.keycode==KEY_ESCAPE:
   if overlay.visible:
-   if overlay.view_id=="shop": _show_settings()
+   if overlay.view_id in ["shop","gates"]: _show_settings()
    elif overlay.closable: _close_overlay()
   elif awaiting_spell>=0: _cancel_target()
   elif not home_active: _show_menu()
@@ -169,6 +183,7 @@ func _close_overlay() -> void:
  elif return_to=="collection": _show_collection()
  elif not home_active:
   if g.phase=="shop": _show_shop()
+  elif g.phase=="gates": _show_gates()
   else: _refresh_run(false)
 
 func _show_home() -> void:
@@ -230,6 +245,7 @@ func _continue_run() -> void:
  run_view.show()
  _refresh_run()
  if g.phase=="shop": _show_shop()
+ elif g.phase=="gates": _show_gates()
  elif g.phase in ["reward","failed","over"]: _show_result()
 
 func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -> void:
@@ -242,6 +258,7 @@ func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -
  first_target=-1
  effects.clear_transients(true)
  g.new_run(board_id,run_seed.strip_edges().to_upper())
+ g.queue_gate()
  run_view.wallet.reset(g.money)
  board_page=int(Cat.BOARDS.find(Cat.board(board_id))/10.0)
  chosen_board=board_id
@@ -252,7 +269,7 @@ func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -
  run_view.show()
  _refresh_run()
  effects.play("start")
- effects.banner("FLOOR 1",run_view._gate_name.text)
+ _show_gates()
 
 func _render() -> void:
  if home_active:
@@ -462,7 +479,7 @@ func _show_result() -> void:
  col.add_child(art)
  col.add_child(_paragraph("FLOOR %d · GATE %d / 3" % [g.floor_num,g.gate+1],UIStyle.MUTED,12))
  col.add_child(UIStyle.label("%s / %s" % [g.score.fmt(),g.target().fmt()],31,UIStyle.CREAM,true))
- if not won: col.add_child(_paragraph("−1 Life. Your two smallest tiles were cleared. Visit the shop, then retry this gate." if g.hp>0 else "Your engine reached floor %d and cleared %d gates." % [g.floor_num,g.cleared]))
+ if not won: col.add_child(_paragraph("-1 Life. Your two smallest tiles were cleared. Visit the shop, then retry this gate." if g.hp>0 else "Your engine reached floor %d and cleared %d gates." % [g.floor_num,g.cleared]))
  if not g.result_summary.is_empty():
   var summary: Dictionary = g.result_summary
   col.add_child(_paragraph("REWARD $%s   ·   INTEREST $%s   ·   FEE $%s" % [Num.of(summary.gross).fmt(),Num.of(summary.interest).fmt(),Num.of(summary.fee).fmt()],UIStyle.GOLD,14))
@@ -480,15 +497,16 @@ func _show_shop() -> void:
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
- var host: Control = overlay.open_custom("shop",Vector2(960,474),true,337)
- overlay.panel.position.x=324
+ var host: Control = overlay.open_custom("shop",_table_size(),true,320)
+ overlay.panel.position.x=288
  _shop_shade()
  shop_view=SHOP_SCENE.instantiate()
  shop_view.motion_enabled=not reduced_motion
  host.add_child(shop_view)
- shop_view.size=Vector2(960,474)
+ shop_view.size=_table_size()
  shop_view.buy_requested.connect(_buy)
- shop_view.item_inspected.connect(func(id: String): _show_info(id,"offer",-1,"shop"))
+ shop_view.item_inspected.connect(_inspect_offer)
+ shop_view.upgrade_inspected.connect(_inspect_upgrade)
  shop_view.reroll_requested.connect(_reroll_shop)
  shop_view.pack_requested.connect(_open_shop_pack)
  shop_view.heal_requested.connect(_heal_shop)
@@ -499,8 +517,8 @@ func _shop_shade() -> void:
  overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
  var shade: ColorRect = overlay.get_child(0)
  shade.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
- shade.position=Vector2(305,310)
- shade.size=Vector2(1020,530)
+ shade.position=Vector2(252,308)
+ shade.size=Vector2(size.x-252,size.y-308)
  shade.color=Color("10262e45")
 
 func _buy(id: String) -> bool:
@@ -542,10 +560,10 @@ func _heal_shop() -> void:
 func _leave_shop() -> void:
  if g.phase!="shop" or not g.pack_choices.is_empty(): return
  g.leave_shop()
+ g.queue_gate()
  overlay.close()
  _refresh_run()
- effects.play("start")
- effects.banner("FLOOR %d" % g.floor_num,run_view._gate_name.text)
+ _show_gates()
 
 func _sell(kind: String, index: int) -> void:
  var sold: bool = g.sell_relic(index) if kind=="relic" else g.sell_item(index)
@@ -555,19 +573,21 @@ func _sell(kind: String, index: int) -> void:
  _show_shop()
 
 func _show_pack() -> void:
+ _clear_context()
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
- var host: Control = overlay.open_custom("pack",Vector2(960,474),false,337)
- overlay.panel.position.x=324
+ var host: Control = overlay.open_custom("pack",_table_size(),false,320)
+ overlay.panel.position.x=288
  _shop_shade()
  var pack: Control = PACK_SCENE.instantiate()
  pack.choices=g.pack_choices.duplicate()
  pack.motion_enabled=not reduced_motion
  for id in pack.choices: pack.available[id]=g.can_grant(id)
  host.add_child(pack)
- pack.size=Vector2(960,474)
+ pack.size=_table_size()
  pack.picked.connect(_pick_pack)
+ pack.item_inspected.connect(func(id: String, source: Control): _inspect_pack(id,source,pack))
  pack.skipped.connect(func(): g.pack_choices=[]; g.save_run(); _show_shop())
 
 func _pick_pack(id: String) -> void:
@@ -772,42 +792,155 @@ func _update_sound_icons() -> void:
   if is_instance_valid(icon): icon.texture=texture
 
 func _clear_context() -> void:
+ if _context_key.begins_with("offer:") and is_instance_valid(shop_view) and shop_view.is_inside_tree():
+  shop_view.selected_offer=-1
+  for slot in shop_view.offers:
+   if is_instance_valid(slot.buy): slot.buy.visible=false
+   if is_instance_valid(slot.card): slot.card.selected=false; slot.card.queue_redraw()
+ if _context_source:
+  var source = _context_source.get_ref()
+  if is_instance_valid(source) and source.get("selected")!=null:
+   source.selected=false
+   source.queue_redraw()
  if is_instance_valid(context_panel):
   remove_child(context_panel)
   context_panel.queue_free()
  context_panel=null
+ _context_key=""
+ _context_source=null
+ _preview_source=null
 
-func _show_context(id: String, kind: String, index: int) -> void:
- _clear_context()
- _stop_auto()
- var cards: Array = run_view.relic_cards if kind=="relic" else run_view.pocket_cards
- if index<0 or index>=cards.size(): return
- var source: Control = cards[index]
+func _dock(id: String, live: String = "", pinned: bool = false) -> VBoxContainer:
  var data: Dictionary = Cat.data_for(id)
- var live: String = run_view.live_state(g,g.relics[index]) if kind=="relic" else ""
  context_panel=UIStyle.panel(Color("23343c"),UIStyle.GOLD,8)
- context_panel.name="SelectedItem"
- context_panel.z_index=80
- context_panel.mouse_filter=Control.MOUSE_FILTER_STOP
+ context_panel.name="SelectedItem" if pinned else "ItemPreview"
+ context_panel.z_index=100
+ context_panel.mouse_filter=Control.MOUSE_FILTER_STOP if pinned else Control.MOUSE_FILTER_IGNORE
  add_child(context_panel)
+ context_panel.position=Vector2(size.x-358,324)
+ context_panel.size=Vector2(346,0)
  var col: VBoxContainer = UIStyle.column(10)
  context_panel.add_child(col)
  col.add_child(UIStyle.item_tooltip(data.name,data.desc,data.rarity,live))
+ return col
+
+func _show_item_preview(id: String, live: String, source: Control) -> void:
+ if not _context_key.is_empty(): return
+ _clear_context()
+ if Cat.data_for(id).is_empty(): return
+ _dock(id,live)
+ _preview_source=weakref(source)
+
+func _hide_item_preview(source: Control) -> void:
+ if _context_key.is_empty() and _preview_source and _preview_source.get_ref()==source: _clear_context()
+
+func _pin(id: String, key: String, source: Control, live: String = "") -> VBoxContainer:
+ if _context_key==key:
+  _clear_context()
+  return null
+ _clear_context()
+ _stop_auto()
+ var col: VBoxContainer = _dock(id,live,true)
+ _context_key=key
+ _context_source=weakref(source)
+ if source.get("selected")!=null: source.selected=true; source.queue_redraw()
+ return col
+
+func _inspect_offer(id: String) -> void:
+ if id.is_empty(): _clear_context(); return
+ var source: Control
+ for slot in shop_view.offers:
+  if slot.id==id: source=slot.card; break
+ if not is_instance_valid(source): return
+ var col: VBoxContainer = _pin(id,"offer:"+id,source,"Cost $%d" % g.cost_for(id))
+ if col==null: return
+ for index in range(shop_view.offers.size()):
+  var slot: Dictionary = shop_view.offers[index]
+  if slot.id==id:
+   shop_view.selected_offer=index
+   if is_instance_valid(slot.buy): slot.buy.visible=true
+ if not g.can_grant(id): col.add_child(_paragraph("No available slot, or already owned."))
+ elif g.money.cmp(g.cost_for(id))<0: col.add_child(_paragraph("Not enough money."))
+ col.add_child(_button("Close",_clear_context))
+
+func _inspect_upgrade(id: String, source: Control) -> void:
+ var col: VBoxContainer = _pin(id,"upgrade:"+id,source,"One offer per floor")
+ if col==null: return
+ var buy: Button = _button("Buy  $%d" % g.cost_for(id),func(): _buy(id),Color("328a69"))
+ buy.disabled=not g.can_grant(id) or g.money.cmp(g.cost_for(id))<0
+ col.add_child(buy)
+ col.add_child(_button("Close",_clear_context))
+
+func _inspect_pack(id: String, source: Control, pack: Control) -> void:
+ var col: VBoxContainer = _pin(id,"pack:"+id,source)
+ if col==null: return
+ var take: Button = _button("Take",func(): _pick_pack(id),Color("328a69"))
+ take.disabled=not bool(pack.available.get(id,false))
+ col.add_child(take)
+ col.add_child(_button("Close",_clear_context))
+
+func _show_context(id: String, kind: String, index: int) -> void:
+ var cards: Array = run_view.relic_cards if kind=="relic" else run_view.pocket_cards
+ if index<0 or index>=cards.size(): return
+ var data: Dictionary = Cat.data_for(id)
+ var live: String = run_view.live_state(g,g.relics[index]) if kind=="relic" else ""
+ var col: VBoxContainer = _pin(id,kind+":"+str(index),cards[index],live)
+ if col==null: return
  if kind=="relic":
   var order: HBoxContainer = UIStyle.row(8)
-  if index>0: order.add_child(_button("< LEFT",func(): _reorder_to(index,index-1)))
-  if index<g.relics.size()-1: order.add_child(_button("RIGHT >",func(): _reorder_to(index,index+1)))
+  if index>0: order.add_child(_button("< Left",func(): _reorder_to(index,index-1)))
+  if index<g.relics.size()-1: order.add_child(_button("Right >",func(): _reorder_to(index,index+1)))
   if order.get_child_count()>0: col.add_child(order)
  elif g.phase in ["play","shop"]:
-  col.add_child(_button("USE",func(): _clear_context(); _select_item(index),Color("477eaa")))
+  col.add_child(_button("Use",func(): _clear_context(); _select_item(index),Color("477eaa")))
  if g.phase=="shop":
-  var sell: Button = _button("SELL  $%d" % maxi(1,int(data.cost/2.0)),func(): _clear_context(); _sell(kind,index),Color("328a69"),Color("82b999"),20)
+  var sell: Button = _button("Sell  $%d" % maxi(1,int(data.cost/2.0)),func(): _clear_context(); _sell(kind,index),Color("328a69"))
   sell.name="SellSelected"
   col.add_child(sell)
- col.add_child(_button("CLOSE",_clear_context,Color("405965"),Color("6c838a"),15))
- var local_rect := Rect2(source.position+source.get_parent().position,source.size)
- context_panel.position=Vector2(clampf(local_rect.position.x-20,276,1060),280)
- context_panel.size=Vector2(350,0)
+ col.add_child(_button("Close",_clear_context))
+
+func _show_gates() -> void:
+ if g.phase!="gates": return
+ _clear_context()
+ _stop_auto()
+ _input_buffer.clear()
+ var host: Control = overlay.open_custom("gates",_table_size(),false,320)
+ overlay.panel.position.x=288
+ _shop_shade()
+ gate_selector=GATE_SELECT_SCENE.instantiate()
+ gate_selector.view_size=_table_size()
+ gate_selector.previews=g.gate_previews()
+ gate_selector.floor_num=g.floor_num
+ gate_selector.retry=not g.pending_outcome
+ gate_selector.motion_enabled=not reduced_motion
+ host.add_child(gate_selector)
+ gate_selector.size=_table_size()
+ gate_selector.enter_requested.connect(_begin_gate)
+
+func _begin_gate() -> void:
+ if not g.begin_gate(): return
+ _clear_context()
+ overlay.close()
+ _refresh_run()
+ effects.play("start")
+ effects.banner("FLOOR %d" % g.floor_num,run_view._gate_name.text)
 
 func _local_rect(rect: Rect2) -> Rect2:
  return Rect2(get_global_transform().affine_inverse()*rect.position,rect.size/scale)
+
+func _table_size() -> Vector2:
+ return Vector2(size.x-288,size.y-320)
+
+func _layout_canvas() -> void:
+ size=get_viewport_rect().size
+ run_view.adapt_canvas(size)
+ if is_instance_valid(context_panel): context_panel.position=Vector2(size.x-358,324)
+ if overlay.visible and overlay.view_id in ["shop","pack","gates"]:
+  overlay.panel.position=Vector2(288,320)
+  overlay.panel.size=_table_size()
+  var custom: Control = overlay.panel.get_node_or_null("CustomView")
+  if custom and custom.get_child_count()>0:
+   var view: Control = custom.get_child(0)
+   view.size=_table_size()
+   if overlay.view_id=="gates": view.adapt_canvas(_table_size())
+  _shop_shade()

@@ -3,7 +3,7 @@ const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
 const RunRng = preload("res://scripts/run_rng.gd")
 const SAVE_PATH = "user://gatefold-godot-v1.json"
-const PHASES = ["play","reward","failed","shop","over"]
+const PHASES = ["play","reward","failed","shop","gates","over"]
 var rng = RunRng.new()
 var seed_text := ""
 var cells: Array = []
@@ -765,3 +765,24 @@ func load_run() -> bool:
   var legacy = JavaScriptBridge.eval("localStorage.getItem('gatefold.run.v1')",true)
   if legacy is String and import_run(legacy): return true
  return false
+
+## UI pacing state: committed next gate, awaiting explicit entry.
+func queue_gate() -> bool:
+ if phase!="play": return false
+ phase="gates"
+ save_run()
+ return true
+
+func begin_gate() -> bool:
+ if phase!="gates": return false
+ phase="play"
+ save_run()
+ return true
+
+func gate_previews() -> Array[Dictionary]:
+ var previews: Array[Dictionary] = []
+ for index in range(3):
+  var goal = Num.power(3,floor_num-1).times([96,160,256][index]).times(b().get("target_mult",1))
+  var move_count: int = moves if index==gate else [18,17,16][index]+int(b().get("moves",0))+(6 if has_upgrade("moves2") else 3 if has_upgrade("moves1") else 0)-(3 if index==2 and guardian().id=="short" else 0)
+  previews.append({"index":index,"name":guardian().name if index==2 else ["Entry Gate","Inner Gate"][index],"rule":guardian().desc if index==2 else "No special rule.","art":guardian().get("art","gate") if index==2 else "gate","target":goal.fmt(),"moves":move_count,"reward":[4,5,7][index],"status":"Cleared" if index<gate else "Ready" if index==gate else "Upcoming"})
+ return previews

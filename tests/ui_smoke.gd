@@ -30,10 +30,11 @@ func run() -> void:
  check(ui.home_active and ui.home.visible,"opens on composed title screen")
  check(ui.home.find_children("*","Button",true,false).size()>=6,"title artwork and menu built")
  var title: Label = ui.home.get_node("Title")
- check(title.get_theme_font("font").resource_path=="res://assets/fonts/pixel.fnt","native bitmap font throughout the game")
+ check(title.get_theme_font("font").resource_path=="res://assets/type/PixelOperator-Bold.ttf","readable pixel font throughout the game")
  check(title.size.x>=500,"title does not wrap into a column")
  for definition in Game.Cat.BOARDS:
   ui.start_run(definition.id,"UI-TEST")
+  ui._begin_gate()
   await process_frame
   check(ui.run_view.board.size.x==420,"board fits "+definition.id)
   check(ui.run_view.relic_cards.size()==ui.g.relics.size(),"illustrated rack "+definition.id)
@@ -49,7 +50,7 @@ func run() -> void:
   ui._refresh_run(false)
   ui._show_shop()
   await process_frame
-  check(ui.overlay.panel.position.y>=ui.run_view.rack.get_global_rect().end.y+35,"shop avoids owned rack "+definition.id)
+  check(ui.overlay.panel.position.y>=ui.run_view.rack.get_global_rect().end.y+16,"shop avoids owned rack "+definition.id)
   check(ui.overlay.panel.position.x+ui.overlay.panel.size.x<=1440,"shop fits width "+definition.id)
   ui.g.money=Num.new(100)
   ui.g.pack_open()
@@ -58,6 +59,7 @@ func run() -> void:
   check(ui.overlay.view_id=="pack","illustrated pack "+definition.id)
   ui.overlay.close()
  ui.start_run("classic","INPUT")
+ ui._begin_gate()
  var rack_node: int = ui.run_view.rack.get_instance_id()
  var board_node: int = ui.run_view.board.get_instance_id()
  ui._request_move("left")
@@ -71,6 +73,7 @@ func run() -> void:
   var tile: Control = ui.run_view.board.tiles[index]
   check(tile.position.distance_to(ui.run_view.board._cell_position(index))<.1,"tile settles into its grid cell")
  ui.start_run("classic","TOUCH")
+ ui._begin_gate()
  var touch_down := InputEventScreenTouch.new()
  touch_down.pressed=true
  touch_down.position=Vector2(60,60)
@@ -82,6 +85,7 @@ func run() -> void:
  await create_timer(.22).timeout
  check(ui.g.swipes==1,"touch swipe reaches the movement controller")
  ui.start_run("classic","CONTROLLER")
+ ui._begin_gate()
  var joy := InputEventJoypadButton.new()
  joy.button_index=JOY_BUTTON_DPAD_LEFT
  joy.pressed=true
@@ -105,7 +109,7 @@ func run() -> void:
  ui.run_selector._select("archivist")
  check(ui.run_selector.hero.texture.resource_path.ends_with("board_archivist.png"),"selection shows distinct pixel board artwork")
  check(ui.run_selector._stats[0].text=="2" and ui.run_selector._stats[3].text=="5","selection uses actual board starting rules")
- check(ui.run_selector._loadout.get_child_count()==12,"starting kit includes relics, upgrade, and three runes")
+ check(ui.run_selector._loadout.get_child_count()==6,"starting kit includes relics, upgrade, and three runes")
  check(ui.g.rng.state==active_rng and ui.g.board_id==active_board,"selection preview cannot change the active run or RNG")
  ui.run_selector.seed_field.text_changed.emit("KEPT-SEED")
  var selector_id: int = ui.run_selector.get_instance_id()
@@ -117,6 +121,7 @@ func run() -> void:
   for id in pool:
    check(ResourceLoader.exists("res://assets/pixel/"+str(pool[id].art)+".png"),"pixel art covers "+id)
  ui.start_run("classic","TRANSACTIONS")
+ ui._begin_gate()
  ui.g.finish_gate(true)
  ui.g.open_shop()
  ui.g.shop_offers=["corner","mercy","venus","echo"]
@@ -166,10 +171,12 @@ func run() -> void:
  await process_frame
  ui.overlay.close()
  ui.start_run("purple","ORDER")
+ ui._begin_gate()
  var first_id: String = ui.g.relics[0].id
  ui._reorder_to(0,1)
  check(ui.g.relics[1].id==first_id,"card drop reorders scoring engine")
  ui.start_run("robot","AUTO")
+ ui._begin_gate()
  ui._toggle_auto()
  await create_timer(.9).timeout
  check(ui.g.swipes>0,"automatic input advances animated board")

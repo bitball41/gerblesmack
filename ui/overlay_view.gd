@@ -29,7 +29,7 @@ func open(title_text: String, id: String, dimensions: Vector2 = Vector2(930,710)
  add_child(panel)
  panel.mouse_filter=Control.MOUSE_FILTER_STOP
  panel.size=dimensions
- panel.position=Vector2((1440-dimensions.x)/2,(900-dimensions.y)/2 if top<0 else top)
+ panel.position=Vector2((get_viewport_rect().size.x-dimensions.x)/2,(get_viewport_rect().size.y-dimensions.y)/2 if top<0 else top)
  var layout: VBoxContainer = UIStyle.column(15)
  layout.size_flags_vertical=Control.SIZE_EXPAND_FILL
  panel.add_child(layout)
@@ -40,9 +40,10 @@ func open(title_text: String, id: String, dimensions: Vector2 = Vector2(930,710)
  head.add_child(title_label)
  if closable:
   var close_button: Button = BUTTON_SCENE.instantiate()
-  close_button.text="×"
+  close_button.text="X"
+  close_button.padding=4
   close_button.display_size=26
-  close_button.custom_minimum_size=Vector2(38,38)
+  close_button.custom_minimum_size=Vector2(48,48)
   close_button.pressed.connect(func(): close_requested.emit())
   head.add_child(close_button)
   _focus_close_button.call_deferred(weakref(close_button))

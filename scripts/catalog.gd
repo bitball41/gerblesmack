@@ -786,7 +786,7 @@ const BOARDS = [
   "color": "#b9854a",
   "edge": "#f1d09a",
   "ink": "#fff2d4",
-  "badge": "−25%",
+  "badge": "-25%",
   "headline": "Discounts + free first rerolls",
   "desc": "Start with Friendly Faces and Loose Change.",
   "relics": [

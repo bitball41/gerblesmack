@@ -22,8 +22,10 @@ func _ready() -> void:
  mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
  focus_mode=Control.FOCUS_ALL
  pressed.connect(func(): inspected.emit(item_id))
- mouse_entered.connect(func(): _tilt(true))
- mouse_exited.connect(func(): _tilt(false))
+ mouse_entered.connect(func(): _tilt(true); _preview())
+ focus_entered.connect(_preview)
+ mouse_exited.connect(func(): _tilt(false); _hide_preview())
+ focus_exited.connect(_hide_preview)
  resized.connect(_layout)
  _refresh()
  _layout.call_deferred()
@@ -53,7 +55,7 @@ func _refresh() -> void:
  for label_node in [title,rarity,caption]:
   label_node.add_theme_color_override("font_color",Color("2b3c42"))
   label_node.mouse_filter=Control.MOUSE_FILTER_IGNORE
- title.add_theme_font_override("font",UIStyle.DISPLAY)
+ title.add_theme_font_override("font",UIStyle.BODY)
  title.add_theme_font_size_override("font_size",15)
  rarity.add_theme_font_override("font",UIStyle.BOLD)
  rarity.add_theme_font_size_override("font_size",9)
@@ -62,7 +64,7 @@ func _refresh() -> void:
  illustration.texture=UIStyle.sprite(data.art)
  illustration.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
  illustration.modulate=Color.WHITE
- tooltip_text=data.name+"\n"+data.desc
+ tooltip_text=""
  queue_redraw()
 
 func _layout() -> void:
@@ -75,11 +77,13 @@ func _layout() -> void:
  caption.visible=false
  title.visible=size.x>=90
  title.text=Cat.data_for(item_id).get("name",item_id)
- title.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+ title.autowrap_mode=TextServer.AUTOWRAP_WORD
+ title.max_lines_visible=2
+ title.clip_text=true
  title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
- title.add_theme_font_size_override("font_size",30 if size.x>=175 else 15)
- title.position=Vector2(6,art_size+15)
- title.size=Vector2(size.x-12,size.y-art_size-22)
+ title.add_theme_font_size_override("font_size",32)
+ title.position=Vector2(4,art_size+10)
+ title.size=Vector2(size.x-8,size.y-art_size-18)
  queue_redraw()
 
 func _draw() -> void:
@@ -89,12 +93,16 @@ func _draw() -> void:
  draw_rect(Rect2(6,size.y-8,size.x-12,2),Color("172932"))
 
 func _tilt(entered: bool) -> void:
- if not motion_enabled: return
- if _hover and _hover.is_valid(): _hover.kill()
  z_index=8 if entered else 0
- _hover=create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
- _hover.tween_property(self,"scale",Vector2(1.035,1.035) if entered else Vector2.ONE,.12)
- _hover.tween_property(self,"rotation",_rest_rotation-.012 if entered else _rest_rotation,.12)
+ queue_redraw()
+
+func _preview() -> void:
+ var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
+ if host: host._show_item_preview(item_id,live_note,self)
+
+func _hide_preview() -> void:
+ var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
+ if host: host._hide_item_preview(self)
 
 func pulse(delay: float = 0.0) -> void:
  if not motion_enabled: return
@@ -135,9 +143,3 @@ func _gui_input(event: InputEvent) -> void:
   if event.keycode in [KEY_LEFT,KEY_RIGHT]:
    reorder_requested.emit(drag_index,drag_index+(-1 if event.keycode==KEY_LEFT else 1))
    accept_event()
-
-func _make_custom_tooltip(_for_text: String) -> Object:
- var data: Dictionary = Cat.data_for(item_id)
- var note: String = live_note
- if note.is_empty() and item_id in ["monolith","compound"]: note="STARTS AT x1"
- return UIStyle.item_tooltip(data.name,data.desc,data.rarity,note,true)

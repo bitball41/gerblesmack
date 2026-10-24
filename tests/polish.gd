@@ -47,6 +47,7 @@ func run() -> void:
  ui.g.persist_enabled=false
  ui.effects.sound_enabled=false
  ui.start_run("black","TOOLTIPS")
+ ui._begin_gate()
  await process_frame
  ui.g.relics[1].growth=Num.new(2.75)
  ui._refresh_run(false)

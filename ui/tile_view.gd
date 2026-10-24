@@ -33,9 +33,9 @@ func _draw() -> void:
    draw_rect(Rect2(8+index*4,6+index*int(size.y/9),8,6),Color("ffffff35"))
  var enhancement: String = ""
  for key in ["gold","steel","glass"]:
-  if fx.get(key,false): enhancement+=("Au" if key=="gold" else "Fe" if key=="steel" else "◇")+" "
+  if fx.get(key,false): enhancement+=("Au" if key=="gold" else "Fe" if key=="steel" else "Gl")+" "
  if not enhancement.is_empty():
-  var small: int = 15
+  var small: int = 16
   var width: float = UIStyle.BOLD.get_string_size(enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small).x
   draw_string(UIStyle.BOLD,Vector2((size.x-width)/2,size.y-10),enhancement,HORIZONTAL_ALIGNMENT_LEFT,-1,small,Color(palette[1],.8))
  if value.get("seal",false):

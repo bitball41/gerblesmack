@@ -1,6 +1,6 @@
 extends RefCounted
-const DISPLAY: Font = preload("res://assets/fonts/pixel.fnt")
-const BODY: Font = DISPLAY
+const DISPLAY: Font = preload("res://assets/type/PixelOperator-Bold.ttf")
+const BODY: Font = preload("res://assets/type/PixelOperator.ttf")
 const BOLD: Font = DISPLAY
 const Visuals = preload("res://ui/visual_catalog.gd")
 const Num = preload("res://scripts/num.gd")
@@ -95,10 +95,10 @@ static func set_rect(control: Control, rect: Rect2) -> void:
 static func default_theme() -> Theme:
  var result := Theme.new()
  result.default_font=BODY
- result.default_font_size=16
+ result.default_font_size=32
  result.set_constant("outline_size","Label",0)
- result.set_color("font_shadow_color","Label",Color("101f2b"))
- result.set_constant("shadow_offset_y","Label",1)
+ result.set_color("font_shadow_color","Label",Color.TRANSPARENT)
+ result.set_constant("shadow_offset_y","Label",0)
  result.set_constant("shadow_offset_x","Label",0)
  result.set_stylebox("panel","TooltipPanel",box(Color("152e3c"),Color("8caaa9"),8,4,12))
  result.set_font("font","TooltipLabel",BODY)
@@ -107,7 +107,7 @@ static func default_theme() -> Theme:
  result.set_stylebox("normal","LineEdit",box(Color("152c3b"),Color("71929e"),7,3,12))
  result.set_stylebox("focus","LineEdit",box(Color("1d3542"),GOLD,7,3,12))
  result.set_font("font","LineEdit",DISPLAY)
- result.set_font_size("font_size","LineEdit",22)
+ result.set_font_size("font_size","LineEdit",32)
  result.set_color("font_color","LineEdit",CREAM)
  result.set_stylebox("normal","TextEdit",box(Color("152c3b"),Color("71929e"),7,3,12))
  for control_type in ["VScrollBar","HScrollBar"]:
@@ -123,53 +123,49 @@ static func sprite(symbol: String) -> Texture2D:
  return load("res://assets/pixel/"+symbol+".png") as Texture2D
 
 static func pixel_font_size(requested: int) -> int:
- # Main canvas is 2/3 scale: 15 layout units = one 10px bitmap step.
- return maxi(15,int(roundf(requested/15.0))*15)
+ return maxi(32,int(roundf(requested/16.0))*16)
 
 static func precise(value) -> String:
  var n = Num.of(value)
  return str(snappedf(n.to_float(),.001)) if n.e<5 else n.fmt()
 
-static func item_tooltip(title_text: String, description: String, rarity: String, live: String = "", native_popup: bool = false) -> PanelContainer:
- var unit: float = 2.0/3.0 if native_popup else 1.0
- var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),int(15*unit))
+static func item_tooltip(title_text: String, description: String, rarity: String, live: String = "", _native_popup: bool = false) -> PanelContainer:
+ var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),16)
  result.name="ItemTooltip"
- result.custom_minimum_size.x=330*unit
- var body: VBoxContainer = column(int(12*unit))
+ result.custom_minimum_size.x=330
+ var body: VBoxContainer = column(12)
  result.add_child(body)
- var title_label: Label = label(title_text,30,Color("22343c"),true,true)
- title_label.custom_minimum_size.x=300*unit
- title_label.add_theme_font_size_override("font_size",int(30*unit))
+ var title_label: Label = label(title_text,32,Color("22343c"),true,true)
+ title_label.custom_minimum_size.x=298
  body.add_child(title_label)
  var desc := RichTextLabel.new()
  desc.bbcode_enabled=true
  desc.fit_content=true
  desc.scroll_active=false
  desc.mouse_filter=Control.MOUSE_FILTER_IGNORE
- desc.custom_minimum_size.x=300*unit
+ desc.custom_minimum_size.x=298
  desc.add_theme_font_override("normal_font",BODY)
- desc.add_theme_font_size_override("normal_font_size",int(20*unit))
+ desc.add_theme_font_size_override("normal_font_size",32)
  desc.add_theme_color_override("default_color",Color("38464b"))
+ desc.add_theme_constant_override("line_separation",2)
  var regex := RegEx.new()
  regex.compile("([×+^][0-9][0-9.,]*|\\$[0-9]+|[0-9]+%)")
  desc.text=regex.sub(description,"[color=#a23c42]$1[/color]",true)
  body.add_child(desc)
  if not live.is_empty():
-  var state: PanelContainer = panel(Color("243a43"),Color("49666b"),int(10*unit))
-  var text: Label = label(live,15,GOLD,true,true)
-  text.custom_minimum_size.x=280*unit
-  text.add_theme_font_size_override("font_size",int(15*unit))
+  var state: PanelContainer = panel(Color("243a43"),Color("49666b"),8)
+  var text: Label = label(live,32,GOLD,false,true)
+  text.custom_minimum_size.x=282
   state.add_child(text)
   body.add_child(state)
- var badge: Label = label(rarity.to_upper(),15,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("986047"),true)
- badge.add_theme_font_size_override("font_size",int(15*unit))
+ var badge: Label = label(rarity,32,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("986047"),true)
  body.add_child(badge)
  return result
 
 static func fit(label_node: Label, largest: int, smallest: int = 12) -> void:
  var font: Font = label_node.get_theme_font("font")
- var font_size: int = largest
- while font_size>smallest and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=2
+ var font_size: int = pixel_font_size(largest)
+ while font_size>maxi(32,smallest) and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=16
  label_node.add_theme_font_size_override("font_size",pixel_font_size(font_size))
 
 static func summary(text: String, width: float, font_size: int, max_lines: int = 3) -> String:

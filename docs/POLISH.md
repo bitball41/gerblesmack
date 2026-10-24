@@ -13,8 +13,8 @@ Art direction: ivory printed objects on restrained teal felt, warm metal accents
 
 ## Production rules
 
-- Native canvas: 960 x 600, rendered with nearest sampling. Logical interface coordinates remain 1440 x 900 at 2/3 scale. Text sizes snap to 15 logical units, producing 10px bitmap steps at native resolution. Browser fitting can enlarge fractionally; it does not apply smoothing or force a small integer-scale window.
-- Main Relic illustrations are 64 x 64 and display at native size in the owned rack. Keep editable source in `tools/build_relic_plates.py`. Board portraits are 80 x 100. Small interface pictograms remain in the existing pixel set.
+- Logical canvas: 1440 × 900 with an expanding aspect ratio, canvas-item stretching, and an identity root transform. Text sizes use 16px steps with a 32px body minimum; nearest sampling preserves the art treatment. See the readability revision below.
+- Main Relic illustrations are 64 x 64 source images, displayed within larger readable card frames. Keep editable source in `tools/build_relic_plates.py`. Board portraits are 80 x 100. Small interface pictograms remain in the existing pixel set.
 - No image-model artwork is used. The source uses explicit pixel shapes and palette assignments. No Balatro imagery or audio is included.
 - One upgrade is offered per floor. An unpurchased offer persists between that floor's shops. Buying it leaves the ticket redeemed for the rest of the floor; a new floor offers a new ticket. Rerolls affect the normal offers. Cadence and purchase state survive saving, loading, and retries; old saves remain importable.
 - Show current multipliers for Monolith, Compound Growth, Deep Pockets, Runekeeper, and Steelworks; stored points for Dry Cell; trigger progress for Feedback Loop. Resonance explicitly describes its temporary, per-swipe state. Scientific values do not pass through integer-only formatting.
@@ -26,3 +26,21 @@ Art direction: ivory printed objects on restrained teal felt, warm metal accents
 Automated checks cover legacy behavior, scene composition, immediate and repeated transactions, floor-ticket persistence across save/load and floor transitions, fractional and scientific tooltip values, and contextual selling. Browser review uses a reproducible test scene excluded from production exports, followed by normal entry-point checks.
 
 Review at 1366 x 768 as well as larger views. Inspect normal play, shop, hover and selected tooltips, offer selection, Options, both board pages, packs, purchase arrival, and reload. Check that text and art remain readable, the shop never overlaps owned cards, the selected panel can be dismissed, and critical buttons remain visible. A visual walkthrough establishes layout and interaction behavior; it does not establish player enjoyment.
+
+## Gate pacing and readability revision
+
+The largest observed issue was text rasterized from a tiny homemade font through a 2/3 root transform and another browser fit. The new interface uses a 1440 × 900 logical canvas with an expanding aspect ratio and an identity root transform. Canvas-item stretching rasterizes the UI at the output resolution instead of enlarging a small viewport texture. Pixel Operator supplies clearer letterforms: regular for reading, bold for actions and large numbers, 32 logical pixels for body text and 48–64 for key values. Import disables antialiasing, hinting, subpixel placement, and font oversampling. Browser fitting can still be fractional; this is a responsive pixel-style UI, not a claim of integer-perfect pixels at every resolution.
+
+Mixed-case rule text sits on quiet, contrasting surfaces. Cards have enough width for names such as Crystallize and Singularity without breaking the word. Hover changes the border, without scaling or rotating text. The sidebar fills the left edge and full height; the shop extends to the bottom and right. Wider windows gain table space instead of side gutters.
+
+The shop, gate selector, and board are separate stages. Next round commits the next gate and enters a persisted `gates` waiting phase. All three gates show route status, score target, move count, base reward, and the guardian's rule. Only the current gate has an enabled Enter action. Failure returns to the same gate, and clearing the third gate starts a fresh floor route. Previewing cannot consume RNG or change game state. Existing saves in active play continue as active play.
+
+Item details occupy one fixed right-hand dock, shared by hover and selection. The live multiplier is visible on hover. Clicking pins actions; clicking the same card, upgrade, or pack choice again closes it. Offer Buy and owned Sell actions appear only after selection. Packs require an explicit Take action. Options returns to the current shop or gate selector without starting a gate.
+
+Research used for the typography decisions:
+
+- [Godot 4.5: Using fonts](https://docs.godotengine.org/en/4.5/tutorials/ui/gui_using_fonts.html): design-size multiples, nearest filtering, dynamic font rasterization, and disabling subpixel positioning for pixel fonts.
+- [Game Accessibility Guidelines: clear text formatting](https://gameaccessibilityguidelines.com/use-simple-clear-text-formatting/): distinct glyphs, mixed case, left alignment, spacing, and unfussy backgrounds.
+- [Pixel Operator by Jayvee Enaguas](https://www.dafont.com/pixel-operator.font): CC0 font; license is committed beside the two font files in `assets/type`.
+
+Validation adds `tests/gate_flow.gd` for waiting-state save import, blocked gameplay before entry, accurate previews, retries, floor transitions, Options return, fixed-position details, and repeated-click dismissal. Browser review covers 1440 × 900 and 1366 × 768, with pointer-driven purchase, upgrade redemption, pack choice, gate entry, and settings checks.
