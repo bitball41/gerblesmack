@@ -3,6 +3,7 @@ name: Gatefold Godot Web
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -35,6 +36,22 @@ jobs:
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call" godot-smoke.log; then
             exit 1
           fi
+      - name: Legacy rules and save regression checks
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/regression.gd 2>&1 | tee regression.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|FAIL:" regression.log; then
+            exit 1
+          fi
+      - name: UI and autoplay smoke test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/ui_smoke.gd 2>&1 | tee ui-smoke.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|FAIL:" ui-smoke.log; then
+            exit 1
+          fi
       - name: Build web version
         shell: bash
         run: |
@@ -46,6 +63,7 @@ jobs:
         with:
           path: build/web
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -57,8 +75,6 @@ jobs:
     steps:
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Publish
         id: deployment
         uses: actions/deploy-pages@v4

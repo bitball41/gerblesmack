@@ -1,106 +1,919 @@
 extends RefCounted
 
-# Snapshot of pre-Fracture Gatefold content. New editions and Curse are intentionally not enabled.
+# Content snapshot from the final pre-Fracture HTML game.
 const RELICS = {
- "carbon":{"name":"Carbon Paper","rarity":"Common","cost":4,"desc":"+8 at its point in the chain."},
- "corner":{"name":"Cornerstone","rarity":"Common","cost":5,"desc":"Corner merges score x2."},
- "echo":{"name":"Echo Chamber","rarity":"Uncommon","cost":7,"desc":"Double points and following triggers."},
- "business":{"name":"Small Business","rarity":"Common","cost":5,"desc":"Merge 2s or 4s to earn $1."},
- "resonance":{"name":"Resonance","rarity":"Uncommon","cost":7,"desc":"Growing x1.12 per trigger during a swipe."},
- "domino":{"name":"Domino Theory","rarity":"Uncommon","cost":7,"desc":"Last merge retriggers for earlier merges."},
- "feedback":{"name":"Feedback Loop","rarity":"Rare","cost":10,"desc":"Every fifth chain trigger scores again."},
- "monolith":{"name":"Monolith","rarity":"Rare","cost":9,"desc":"High tile merges grow this x1.15."},
- "battery":{"name":"Dry Cell","rarity":"Common","cost":5,"desc":"Store 12 points when a swipe makes no merges."},
- "steelworks":{"name":"Steelworks","rarity":"Uncommon","cost":7,"desc":"x1.2 for each Steel tile on board."},
- "charity":{"name":"Deep Pockets","rarity":"Uncommon","cost":7,"desc":"x(1 + money / $10, rounded down)."},
- "mirror":{"name":"Looking Glass","rarity":"Uncommon","cost":7,"desc":"Triple first merge and following triggers."},
- "redline":{"name":"Last Resort","rarity":"Common","cost":5,"desc":"x3 when 5 or fewer moves remain."},
- "odd":{"name":"Odd Company","rarity":"Common","cost":4,"desc":"Odd tile powers score x2."},
- "alchemy":{"name":"Alchemist","rarity":"Uncommon","cost":6,"desc":"25% of natural spawns gain one tier."},
- "compound":{"name":"Compound Growth","rarity":"Rare","cost":9,"desc":"x1.25 per cleared gate, permanently."},
- "horizon":{"name":"Low Ground","rarity":"Common","cost":5,"desc":"Bottom-row merges score x2."},
- "magnet":{"name":"Three's Company","rarity":"Uncommon","cost":6,"desc":"Three or more merges in a swipe score x3."},
- "greed":{"name":"Midas Touch","rarity":"Uncommon","cost":7,"desc":"Gold pays $4 instead of $2."},
- "avalanche":{"name":"Avalanche","rarity":"Rare","cost":9,"desc":"Second, third, fourth merges grow x2/x4/x8."},
- "ascension":{"name":"Ascension","rarity":"Rare","cost":10,"desc":"Tiles at least 1024 triple points and triggers."},
- "coupon":{"name":"Loose Change","rarity":"Common","cost":4,"desc":"First reroll each shop is free."},
- "apprentice":{"name":"Runekeeper","rarity":"Common","cost":5,"desc":"+0.25 multiplier per Rune used."},
- "singularity":{"name":"Singularity","rarity":"Rare","cost":11,"desc":"Raise points at this position to power 1.2."}
+ "carbon": {
+  "id": "carbon",
+  "name": "Carbon Paper",
+  "desc": "Add +8 points at this position in the Relic chain.",
+  "art": "carbon",
+  "rarity": "Common",
+  "cost": 4,
+  "accent": "#486b67",
+  "type": "joker"
+ },
+ "corner": {
+  "id": "corner",
+  "name": "Cornerstone",
+  "desc": "Merges that finish in a corner score ×2.",
+  "art": "corner",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#8a6545",
+  "type": "joker"
+ },
+ "echo": {
+  "id": "echo",
+  "name": "Echo Chamber",
+  "desc": "Double points built so far and scoring triggers. Repeats activate Relics to the right.",
+  "art": "echo",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#526e91",
+  "type": "joker"
+ },
+ "business": {
+  "id": "business",
+  "name": "Small Business",
+  "desc": "Merging 2s or 4s pays $1. A payout happens once per actual merge.",
+  "art": "coins",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#96752e",
+  "type": "joker"
+ },
+ "resonance": {
+  "id": "resonance",
+  "name": "Resonance",
+  "desc": "Each trigger reaching here gains a growing ×1.12 bonus. Repeats to the left build it faster. Resets each swipe.",
+  "art": "fork",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#ad4739",
+  "type": "joker"
+ },
+ "domino": {
+  "id": "domino",
+  "name": "Domino Theory",
+  "desc": "Each earlier merge doubles the final merge’s points so far and trigger count. Repeats activate Relics to the right.",
+  "art": "domino",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#3f6c76",
+  "type": "joker"
+ },
+ "feedback": {
+  "id": "feedback",
+  "name": "Feedback Loop",
+  "desc": "Every fifth trigger reaching here adds a copy of points so far. Extra triggers also count. Put repeat Relics to the left.",
+  "art": "feedback",
+  "rarity": "Rare",
+  "cost": 10,
+  "accent": "#96505b",
+  "type": "joker"
+ },
+ "monolith": {
+  "id": "monolith",
+  "name": "Monolith",
+  "desc": "When a merge matches or exceeds your previous highest tile, this Relic permanently gains ×1.15.",
+  "art": "monolith",
+  "rarity": "Rare",
+  "cost": 9,
+  "accent": "#57586b",
+  "type": "joker"
+ },
+ "battery": {
+  "id": "battery",
+  "name": "Dry Cell",
+  "desc": "A swipe with no merges stores +12 points. Add the stored bonus here to every merge next scoring swipe.",
+  "art": "battery",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#a1722f",
+  "type": "joker"
+ },
+ "steelworks": {
+  "id": "steelworks",
+  "name": "Steelworks",
+  "desc": "Multiply points so far by ×1.2 for each Steel tile on the board. Stacks with Steel’s base ×1.25.",
+  "art": "anvil",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#5a6e67",
+  "type": "joker"
+ },
+ "charity": {
+  "id": "charity",
+  "name": "Deep Pockets",
+  "desc": "Score multiplier increases by +1 for every $10 you hold. No cap.",
+  "art": "purse",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#8f743b",
+  "type": "joker"
+ },
+ "mirror": {
+  "id": "mirror",
+  "name": "Looking Glass",
+  "desc": "Triple the first merge’s points so far and trigger count. Repeats activate Relics to the right.",
+  "art": "mirror",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#7c6a91",
+  "type": "joker"
+ },
+ "redline": {
+  "id": "redline",
+  "name": "Last Resort",
+  "desc": "All merges score ×3 with 5 or fewer moves remaining.",
+  "art": "match",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#b24b3b",
+  "type": "joker"
+ },
+ "odd": {
+  "id": "odd",
+  "name": "Odd Company",
+  "desc": "Merges into 2, 8, 32, 128… score ×2. That is every odd power of two.",
+  "art": "stair",
+  "rarity": "Common",
+  "cost": 4,
+  "accent": "#557b58",
+  "type": "joker"
+ },
+ "alchemy": {
+  "id": "alchemy",
+  "name": "Alchemist",
+  "desc": "Every naturally spawned tile has a 25% chance to double before entering the queue.",
+  "art": "flask",
+  "rarity": "Uncommon",
+  "cost": 6,
+  "accent": "#4b807b",
+  "type": "joker"
+ },
+ "compound": {
+  "id": "compound",
+  "name": "Compound Growth",
+  "desc": "Starts at ×1. Each gate you clear permanently multiplies this Relic by ×1.25.",
+  "art": "plant",
+  "rarity": "Rare",
+  "cost": 9,
+  "accent": "#5e7e48",
+  "type": "joker"
+ },
+ "horizon": {
+  "id": "horizon",
+  "name": "Low Ground",
+  "desc": "Merges that finish on the bottom row score ×2.",
+  "art": "horizon",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#a26543",
+  "type": "joker"
+ },
+ "magnet": {
+  "id": "magnet",
+  "name": "Three’s Company",
+  "desc": "Swipes with at least three separate merges score ×3.",
+  "art": "magnet",
+  "rarity": "Uncommon",
+  "cost": 6,
+  "accent": "#9b4642",
+  "type": "joker"
+ },
+ "greed": {
+  "id": "greed",
+  "name": "Midas Touch",
+  "desc": "Gold merge payouts increase from $2 to $4. This is paid once per actual merge.",
+  "art": "hand",
+  "rarity": "Uncommon",
+  "cost": 7,
+  "accent": "#a1802c",
+  "type": "joker"
+ },
+ "avalanche": {
+  "id": "avalanche",
+  "name": "Avalanche",
+  "desc": "The second merge scores ×2, the third ×4, and the fourth ×8 in each swipe.",
+  "art": "mountain",
+  "rarity": "Rare",
+  "cost": 9,
+  "accent": "#4f7489",
+  "type": "joker"
+ },
+ "ascension": {
+  "id": "ascension",
+  "name": "Ascension",
+  "desc": "Merges into 1,024 or higher triple points so far and trigger count. Repeats activate Relics to the right.",
+  "art": "wings",
+  "rarity": "Rare",
+  "cost": 10,
+  "accent": "#9f7541",
+  "type": "joker"
+ },
+ "coupon": {
+  "id": "coupon",
+  "name": "Loose Change",
+  "desc": "The first shop reroll at each gate is free.",
+  "art": "ticket",
+  "rarity": "Common",
+  "cost": 4,
+  "accent": "#6c7b48",
+  "type": "joker"
+ },
+ "apprentice": {
+  "id": "apprentice",
+  "name": "Runekeeper",
+  "desc": "Gains +0.25 multiplier for each Rune used this run. Applies to every merge.",
+  "art": "telescope",
+  "rarity": "Common",
+  "cost": 5,
+  "accent": "#606b9e",
+  "type": "joker"
+ },
+ "singularity": {
+  "id": "singularity",
+  "name": "Singularity",
+  "desc": "Raise points built so far to the power of 1.2.",
+  "art": "orbit",
+  "rarity": "Rare",
+  "cost": 11,
+  "accent": "#884c71",
+  "type": "joker"
+ }
 }
 const SPELLS = {
- "seed":{"name":"Seed","cost":3,"action":"spawn","power":4,"desc":"Place a 16 tile."},
- "star":{"name":"Conjure","cost":4,"action":"spawn","power":5,"desc":"Place a 32 tile."},
- "tower":{"name":"Summon","cost":6,"action":"spawn","power":6,"desc":"Place a 64 tile."},
- "sun":{"name":"Amplify","cost":5,"action":"double","desc":"Double a tile without merging."},
- "twins":{"name":"Duplicate","cost":5,"action":"copy","desc":"Copy a tile into an empty cell."},
- "void":{"name":"Shatter","cost":3,"action":"erase","desc":"Destroy one tile."},
- "emperor":{"name":"Gild","cost":4,"action":"gold","desc":"Add Gold to one tile."},
- "prism":{"name":"Crystallize","cost":4,"action":"glass","desc":"Add Glass to one tile."},
- "anvil":{"name":"Temper","cost":4,"action":"steel","desc":"Add Steel to one tile."},
- "seal":{"name":"Echo Mark","cost":5,"action":"seal","desc":"Give a tile a scoring echo."},
- "mercy":{"name":"Mend","cost":5,"action":"heal","desc":"Recover 1 Life."},
- "hourglass":{"name":"Extra Time","cost":4,"action":"time","desc":"Add 4 moves."}
+ "seed": {
+  "id": "seed",
+  "name": "Seed",
+  "desc": "Place a 16 in an empty cell. Scales up with your natural spawn tier.",
+  "art": "seed",
+  "action": "spawn",
+  "cost": 3,
+  "accent": "#6a7d48",
+  "type": "tarot",
+  "rarity": "Spell",
+  "e": 4
+ },
+ "star": {
+  "id": "star",
+  "name": "Conjure",
+  "desc": "Place a 32 in an empty cell. Scales up with your natural spawn tier.",
+  "art": "star",
+  "action": "spawn",
+  "cost": 4,
+  "accent": "#a17b3b",
+  "type": "tarot",
+  "rarity": "Spell",
+  "e": 5
+ },
+ "tower": {
+  "id": "tower",
+  "name": "Summon",
+  "desc": "Place a 64 in an empty cell. Scales up with your natural spawn tier.",
+  "art": "tower",
+  "action": "spawn",
+  "cost": 6,
+  "accent": "#9b4c3c",
+  "type": "tarot",
+  "rarity": "Spell",
+  "e": 6
+ },
+ "sun": {
+  "id": "sun",
+  "name": "Amplify",
+  "desc": "Double one selected tile. Keeps its enhancements and seal. Does not score.",
+  "art": "sun",
+  "action": "double",
+  "cost": 5,
+  "accent": "#b17a31",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "twins": {
+  "id": "twins",
+  "name": "Duplicate",
+  "desc": "Copy one tile, including its enhancements, into an empty cell.",
+  "art": "twins",
+  "action": "copy",
+  "cost": 5,
+  "accent": "#477570",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "void": {
+  "id": "void",
+  "name": "Shatter",
+  "desc": "Destroy one selected tile and make a little room.",
+  "art": "void",
+  "action": "erase",
+  "cost": 3,
+  "accent": "#625b70",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "emperor": {
+  "id": "emperor",
+  "name": "Gild",
+  "desc": "Make a tile Gold: merging it earns $2. Gold is inherited by the resulting tile.",
+  "art": "crown",
+  "action": "gold",
+  "cost": 4,
+  "accent": "#a07e30",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "prism": {
+  "id": "prism",
+  "name": "Crystallize",
+  "desc": "Make a tile Glass: ×2 merge score, with a 1 in 4 chance to shatter after merging.",
+  "art": "prism",
+  "action": "glass",
+  "cost": 4,
+  "accent": "#4f8490",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "anvil": {
+  "id": "anvil",
+  "name": "Temper",
+  "desc": "Make a tile Steel: while on the board, it gives ×1.25 to every merge.",
+  "art": "anvil",
+  "action": "steel",
+  "cost": 4,
+  "accent": "#5d7770",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "seal": {
+  "id": "seal",
+  "name": "Echo Mark",
+  "desc": "Give a tile a red seal: its merges score twice. The seal is inherited.",
+  "art": "seal",
+  "action": "seal",
+  "cost": 5,
+  "accent": "#a94c3c",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "mercy": {
+  "id": "mercy",
+  "name": "Mend",
+  "desc": "Restore 1 Life, up to your maximum. Can be used at the shop.",
+  "art": "heart",
+  "action": "heal",
+  "cost": 5,
+  "accent": "#a85a50",
+  "type": "tarot",
+  "rarity": "Spell"
+ },
+ "hourglass": {
+  "id": "hourglass",
+  "name": "Extra Time",
+  "desc": "Add 4 moves to the current gate. Use before your final move.",
+  "art": "hourglass",
+  "action": "time",
+  "cost": 4,
+  "accent": "#9c7b43",
+  "type": "tarot",
+  "rarity": "Spell"
+ }
 }
 const RUNES = {
- "mercury":{"name":"Growth Rune","cost":5,"stat":"spawn","desc":"Increase natural spawn tier."},
- "venus":{"name":"Gold Rune","cost":5,"stat":"gold","desc":"+8% Gold chance each use."},
- "mars":{"name":"Glass Rune","cost":5,"stat":"glass","desc":"+8% Glass chance each use."},
- "saturn":{"name":"Steel Rune","cost":5,"stat":"steel","desc":"+8% Steel chance each use."},
- "neptune":{"name":"Echo Rune","cost":6,"stat":"seal","desc":"+6% Echo chance each use."}
+ "mercury": {
+  "id": "mercury",
+  "name": "Growth Rune",
+  "desc": "Improve natural spawns by one tier: 2/4 → more 4s → 4/8 → more 8s… Tiles below the new minimum rise to match.",
+  "art": "mercury",
+  "stat": "spawn",
+  "cost": 5,
+  "accent": "#587895",
+  "type": "planet",
+  "rarity": "Rune"
+ },
+ "venus": {
+  "id": "venus",
+  "name": "Gold Rune",
+  "desc": "Permanently give natural spawns an 8% chance to be Gold. Repeated upgrades compound the chance.",
+  "art": "venus",
+  "stat": "gold",
+  "cost": 5,
+  "accent": "#9f7a38",
+  "type": "planet",
+  "rarity": "Rune"
+ },
+ "mars": {
+  "id": "mars",
+  "name": "Glass Rune",
+  "desc": "Permanently give natural spawns an 8% chance to be Glass. Repeated upgrades compound the chance.",
+  "art": "mars",
+  "stat": "glass",
+  "cost": 5,
+  "accent": "#a25440",
+  "type": "planet",
+  "rarity": "Rune"
+ },
+ "saturn": {
+  "id": "saturn",
+  "name": "Steel Rune",
+  "desc": "Permanently give natural spawns an 8% chance to be Steel. Repeated upgrades compound the chance.",
+  "art": "saturn",
+  "stat": "steel",
+  "cost": 5,
+  "accent": "#587868",
+  "type": "planet",
+  "rarity": "Rune"
+ },
+ "neptune": {
+  "id": "neptune",
+  "name": "Echo Rune",
+  "desc": "Permanently give natural spawns a 6% chance to carry a red seal. Repeated upgrades compound the chance.",
+  "art": "neptune",
+  "stat": "seal",
+  "cost": 6,
+  "accent": "#696797",
+  "type": "planet",
+  "rarity": "Rune"
+ }
 }
 const UPGRADES = {
- "auto1":{"name":"Auto-player I","cost":12,"desc":"Automatic moves (basic search)."},
- "auto2":{"name":"Auto-player II","cost":12,"req":"auto1","desc":"Advanced automatic moves."},
- "trade1":{"name":"World Trade Center I","cost":8,"desc":"Interest cap $10."},
- "trade2":{"name":"World Trade Center II","cost":12,"req":"trade1","desc":"Interest $2 per $5, cap $20."},
- "trade3":{"name":"World Trade Center III","cost":18,"req":"trade2","desc":"Double income sources."},
- "slot1":{"name":"Extra Slot I","cost":10,"desc":"One extra relic slot."},
- "slot2":{"name":"Extra Slot II","cost":15,"req":"slot1","desc":"Second extra relic slot."},
- "pocket1":{"name":"Spell Pouch","cost":7,"desc":"One extra consumable slot."},
- "moves1":{"name":"Long Division I","cost":8,"desc":"+3 moves at every gate."},
- "moves2":{"name":"Long Division II","cost":12,"req":"moves1","desc":"+6 moves total per gate."},
- "heart1":{"name":"Second Wind","cost":10,"desc":"+1 maximum Life and heal."},
- "sale1":{"name":"Friendly Faces","cost":9,"desc":"Shops 25% cheaper."}
+ "auto1": {
+  "id": "auto1",
+  "name": "Auto-player I",
+  "desc": "Plans two swipes ahead using your actual Relic scoring, board space, and visible next tile. Appears from floor 3; Robot starts with it.",
+  "art": "auto",
+  "cost": 12,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "auto2": {
+  "id": "auto2",
+  "name": "Auto-player II",
+  "desc": "Tests sequences up to six swipes ahead across possible tile spawns. Uses actual Relic scoring, enhancements, and guardian rules.",
+  "art": "auto",
+  "cost": 12,
+  "req": "auto1",
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "trade1": {
+  "id": "trade1",
+  "name": "World Trade Center I",
+  "desc": "Raise your interest cap from $5 to $10 per cleared gate. Interest is paid per $5 saved.",
+  "art": "trade",
+  "cost": 8,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "trade2": {
+  "id": "trade2",
+  "name": "World Trade Center II",
+  "desc": "Earn $2 interest per $5 saved. Raise the interest cap to $20.",
+  "art": "trade",
+  "cost": 12,
+  "req": "trade1",
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "trade3": {
+  "id": "trade3",
+  "name": "World Trade Center III",
+  "desc": "Every source of money pays ×2 its base value: rewards, interest, sales, Gold, and Relics.",
+  "art": "trade",
+  "cost": 18,
+  "req": "trade2",
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "slot1": {
+  "id": "slot1",
+  "name": "Extra Slot I",
+  "desc": "Permanently add one Relic slot for this run.",
+  "art": "cards",
+  "cost": 10,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "slot2": {
+  "id": "slot2",
+  "name": "Extra Slot II",
+  "desc": "Add a second extra Relic slot.",
+  "art": "cards",
+  "cost": 15,
+  "req": "slot1",
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "pocket1": {
+  "id": "pocket1",
+  "name": "Spell Pouch",
+  "desc": "Add one consumable slot for this run.",
+  "art": "purse",
+  "cost": 7,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "moves1": {
+  "id": "moves1",
+  "name": "Long Division I",
+  "desc": "Start every future gate with 3 extra moves.",
+  "art": "hourglass",
+  "cost": 8,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "moves2": {
+  "id": "moves2",
+  "name": "Long Division II",
+  "desc": "Start future gates with 6 extra moves total.",
+  "art": "hourglass",
+  "cost": 12,
+  "req": "moves1",
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "heart1": {
+  "id": "heart1",
+  "name": "Second Wind",
+  "desc": "Raise maximum Life by 1 and immediately heal 1 Life.",
+  "art": "heart",
+  "cost": 10,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ },
+ "sale1": {
+  "id": "sale1",
+  "name": "Friendly Faces",
+  "desc": "All future shop prices are reduced by 25%, rounded up.",
+  "art": "ticket",
+  "cost": 9,
+  "req": null,
+  "accent": "#987339",
+  "type": "voucher",
+  "rarity": "Upgrade"
+ }
 }
 const BOARDS = [
- {"id":"red","name":"Red","moves":10,"badge":"+10","desc":"Ten extra moves every gate."},
- {"id":"yellow","name":"Yellow","relics":["business"],"money_gate":7,"markup":1.25,"badge":"+$7","desc":"Start with Small Business, +$7 per gate, shops +25%."},
- {"id":"blue","name":"Blue","relics":["echo"],"slots":1,"badge":"x2","desc":"Echo Chamber and one extra relic slot."},
- {"id":"robot","name":"Robot","upgrades":["auto1"],"maintenance":3,"badge":"AUTO","desc":"Start with Auto-player I, pay maintenance."},
- {"id":"classic","name":"Classic","badge":"4x4","desc":"Original 4x4 rules, no starting bonuses."},
- {"id":"green","name":"Green","relics":["alchemy"],"runes":{"spawn":2},"badge":"4/8","desc":"Alchemist; 4/8 natural spawns."},
- {"id":"purple","name":"Purple","relics":["resonance"],"runes":{"seal":2},"start_seal":true,"badge":"ECHO","desc":"Resonance and Echo starting tiles."},
- {"id":"orange","name":"Orange","relics":["battery"],"charge":48,"moves":4,"badge":"+48","desc":"Dry Cell with 48 charge; +4 moves."},
- {"id":"white","name":"White","max_hp":5,"moves":-3,"floor_heal":1,"badge":"5HP","desc":"5 Life, heal each floor, -3 moves."},
- {"id":"black","name":"Black","relics":["monolith","singularity"],"slots":-1,"target_mult":1.25,"badge":"^1.2","desc":"Monolith & Singularity; fewer slots and tougher gates."},
- {"id":"foundry","name":"Foundry","relics":["steelworks"],"runes":{"steel":2},"start_fx":{"steel":true},"moves":-2,"badge":"Fe","desc":"Steelworks and Steel opening tiles."},
- {"id":"bazaar","name":"Bazaar","relics":["coupon"],"upgrades":["sale1"],"badge":"-25%","desc":"Discounts and free first reroll."},
- {"id":"chronicle","name":"Chronicle","upgrades":["moves1"],"bank_limit":10,"badge":"+10","desc":"Bank up to 10 unused moves."},
- {"id":"archivist","name":"Archivist","relics":["apprentice"],"upgrades":["pocket1"],"items":["mercury","mars","neptune"],"badge":"RUNES","desc":"Start with Runekeeper and three Runes."},
- {"id":"curio","name":"Curio","upgrades":["pocket1"],"slots":-1,"free_packs":true,"badge":"FREE","desc":"Free Supply Packs, but one fewer relic slot."}
+ {
+  "id": "red",
+  "name": "Red",
+  "color": "#c65b4e",
+  "edge": "#ffb29a",
+  "ink": "#fff1d5",
+  "badge": "+10",
+  "headline": "+10 moves every gate",
+  "desc": "Ten extra moves at every gate, including retries.",
+  "relics": [],
+  "upgrades": [],
+  "moves": 10,
+  "slots": 0,
+  "money_gate": 0
+ },
+ {
+  "id": "yellow",
+  "name": "Yellow",
+  "color": "#dfb34d",
+  "edge": "#ffe6a1",
+  "ink": "#343929",
+  "badge": "+$7",
+  "headline": "+$7 after every gate",
+  "desc": "Start with Small Business. Gain $7 after each gate.",
+  "relics": [
+   "business"
+  ],
+  "upgrades": [],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 7,
+  "markup": 1.25,
+  "downside": "All shop prices +25%."
+ },
+ {
+  "id": "blue",
+  "name": "Blue",
+  "color": "#447fb4",
+  "edge": "#a5d8ef",
+  "ink": "#fff2d4",
+  "badge": "×2",
+  "headline": "Echo Chamber + 1 Relic slot",
+  "desc": "Start with Echo Chamber and six Relic slots.",
+  "relics": [
+   "echo"
+  ],
+  "upgrades": [],
+  "moves": 0,
+  "slots": 1,
+  "money_gate": 0
+ },
+ {
+  "id": "robot",
+  "name": "Robot",
+  "color": "#778b92",
+  "edge": "#d5edf0",
+  "ink": "#f8f2d4",
+  "badge": "AUTO",
+  "headline": "Start with Auto-player I",
+  "desc": "Auto-player is available from your first move.",
+  "relics": [],
+  "upgrades": [
+   "auto1"
+  ],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "maintenance": 3,
+  "downside": "Maintenance per gate: $1 on floor 1, $2 on floor 2, $3 from floor 3. No debt."
+ },
+ {
+  "id": "classic",
+  "name": "Classic",
+  "color": "#346a64",
+  "edge": "#8cbcaf",
+  "ink": "#fff1d0",
+  "badge": "4×4",
+  "headline": "Original rules",
+  "desc": "Carbon Paper, 18 opening moves, and no board bonus.",
+  "relics": [],
+  "upgrades": [],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0
+ },
+ {
+  "id": "green",
+  "name": "Green",
+  "color": "#488c5b",
+  "edge": "#b7df93",
+  "ink": "#fff1cf",
+  "badge": "4/8",
+  "headline": "Alchemist + two Growth upgrades",
+  "desc": "Natural spawns start at 4/8, with a 25% chance to double.",
+  "relics": [
+   "alchemy"
+  ],
+  "upgrades": [],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "runes": {
+   "spawn": 2
+  }
+ },
+ {
+  "id": "purple",
+  "name": "Purple",
+  "color": "#8453a3",
+  "edge": "#ddb5f0",
+  "ink": "#fff1d6",
+  "badge": "ECHO",
+  "headline": "Resonance + Echo-marked tiles",
+  "desc": "Two Echo Rune upgrades. Both opening tiles score twice.",
+  "relics": [
+   "resonance"
+  ],
+  "upgrades": [],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "runes": {
+   "seal": 2
+  },
+  "start_seal": true
+ },
+ {
+  "id": "orange",
+  "name": "Orange",
+  "color": "#d78232",
+  "edge": "#ffd094",
+  "ink": "#fff2d0",
+  "badge": "+48",
+  "headline": "+48 stored points · +4 moves",
+  "desc": "Start with a charged Dry Cell. Four extra moves every gate.",
+  "relics": [
+   "battery"
+  ],
+  "upgrades": [],
+  "moves": 4,
+  "slots": 0,
+  "money_gate": 0,
+  "charges": {
+   "battery": 48
+  }
+ },
+ {
+  "id": "white",
+  "name": "White",
+  "color": "#e7e5d5",
+  "edge": "#fff9e4",
+  "ink": "#2d3c40",
+  "badge": "5HP",
+  "headline": "5 Life · heal 1 each floor",
+  "desc": "Begin with five Life. Entering a new floor restores one Life.",
+  "relics": [],
+  "upgrades": [],
+  "moves": -3,
+  "slots": 0,
+  "money_gate": 0,
+  "max_hp": 5,
+  "floor_heal": 1,
+  "downside": "Start every gate with 3 fewer moves."
+ },
+ {
+  "id": "black",
+  "name": "Black",
+  "color": "#302c49",
+  "edge": "#b8accf",
+  "ink": "#fff1cf",
+  "badge": "^1.2",
+  "headline": "Monolith + Singularity",
+  "desc": "Start with both Rare Relics.",
+  "relics": [
+   "monolith",
+   "singularity"
+  ],
+  "upgrades": [],
+  "moves": 0,
+  "slots": -1,
+  "money_gate": 0,
+  "target_mult": 1.25,
+  "downside": "Four Relic slots. All gate targets +25%."
+ },
+ {
+  "id": "foundry",
+  "name": "Foundry",
+  "color": "#3d8792",
+  "edge": "#a2d9dc",
+  "ink": "#fff0ce",
+  "badge": "Fe",
+  "headline": "Forge a Steel engine",
+  "desc": "Steelworks, two Steel Rune upgrades, and Steel opening tiles.",
+  "relics": [
+   "steelworks"
+  ],
+  "upgrades": [],
+  "moves": -2,
+  "slots": 0,
+  "money_gate": 0,
+  "runes": {
+   "steel": 2
+  },
+  "start_fx": {
+   "steel": true
+  },
+  "downside": "Start every gate with 2 fewer moves."
+ },
+ {
+  "id": "bazaar",
+  "name": "Bazaar",
+  "color": "#b9854a",
+  "edge": "#f1d09a",
+  "ink": "#fff2d4",
+  "badge": "−25%",
+  "headline": "Discounts + free first rerolls",
+  "desc": "Start with Friendly Faces and Loose Change.",
+  "relics": [
+   "coupon"
+  ],
+  "upgrades": [
+   "sale1"
+  ],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "start_money": 8,
+  "downside": "Start with $8 instead of $12."
+ },
+ {
+  "id": "chronicle",
+  "name": "Chronicle",
+  "color": "#37698d",
+  "edge": "#a8cee9",
+  "ink": "#fff0d5",
+  "badge": "+10",
+  "headline": "Bank your unused moves",
+  "desc": "Start with Long Division I. Carry up to 10 unused moves into the next gate.",
+  "relics": [],
+  "upgrades": [
+   "moves1"
+  ],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "bank_limit": 10,
+  "no_efficiency": true,
+  "downside": "Saved moves give no cash reward."
+ },
+ {
+  "id": "archivist",
+  "name": "Archivist",
+  "color": "#7f658f",
+  "edge": "#dfc6e9",
+  "ink": "#fff3d4",
+  "badge": "RUNES",
+  "headline": "Build your Rune engine",
+  "desc": "Runekeeper, Spell Pouch, and Growth, Glass, and Echo Runes in your pocket.",
+  "relics": [
+   "apprentice"
+  ],
+  "upgrades": [
+   "pocket1"
+  ],
+  "moves": 0,
+  "slots": 0,
+  "money_gate": 0,
+  "items": [
+   "mercury",
+   "mars",
+   "neptune"
+  ],
+  "max_hp": 2,
+  "downside": "Start with 2 Life."
+ },
+ {
+  "id": "curio",
+  "name": "Curio",
+  "color": "#a85e74",
+  "edge": "#f2c0ce",
+  "ink": "#fff2d3",
+  "badge": "FREE",
+  "headline": "Free Supply Pack every shop",
+  "desc": "Start with Spell Pouch. Each shop’s Supply Pack costs $0.",
+  "relics": [],
+  "upgrades": [
+   "pocket1"
+  ],
+  "moves": 0,
+  "slots": -1,
+  "money_gate": 0,
+  "free_packs": true,
+  "downside": "Four Relic slots."
+ }
 ]
 const GUARDIANS = [
- {"id":"toll","name":"The Tollkeeper","desc":"Every fourth valid swipe costs another move."},
- {"id":"repeat","name":"The Echo","desc":"Same direction twice costs another move."},
- {"id":"largest","name":"The Balance","desc":"Only largest merge scores."},
- {"id":"quiet","name":"The Silence","desc":"Every merge scores x0.75."},
- {"id":"short","name":"The Sundial","desc":"Begin with three fewer moves."}
+ {
+  "name": "The Tollkeeper",
+  "short": "Every fourth valid swipe costs an extra move.",
+  "art": "coins",
+  "id": "toll",
+  "desc": "Every fourth valid swipe costs an extra move."
+ },
+ {
+  "name": "The Echo",
+  "short": "Repeating your last direction costs an extra move.",
+  "art": "echo",
+  "id": "repeat",
+  "desc": "Repeating your last direction costs an extra move."
+ },
+ {
+  "name": "The Balance",
+  "short": "Only the largest merge in each swipe scores. Ties all score.",
+  "art": "scales",
+  "id": "largest",
+  "desc": "Only the largest merge in each swipe scores. Ties all score."
+ },
+ {
+  "name": "The Silence",
+  "short": "All merges score ×0.75. Repeats still work.",
+  "art": "seal",
+  "id": "quiet",
+  "desc": "All merges score ×0.75. Repeats still work."
+ },
+ {
+  "name": "The Sundial",
+  "short": "Begin this guardian gate with 3 fewer moves.",
+  "art": "sun",
+  "id": "short",
+  "desc": "Begin this guardian gate with 3 fewer moves."
+ }
 ]
 
 static func board(id: String) -> Dictionary:
  for b in BOARDS:
-  if b.id == id:
-   return b
+  if b.id == id: return b
  return BOARDS[4]
-
-static func name_for(id: String) -> String:
- for pool in [RELICS,SPELLS,RUNES,UPGRADES]:
-  if pool.has(id):
-   return pool[id].name
- return id
 
 static func data_for(id: String) -> Dictionary:
  for pool in [RELICS,SPELLS,RUNES,UPGRADES]:
-  if pool.has(id):
-   return pool[id]
+  if pool.has(id): return pool[id]
  return {}
+
+static func name_for(id: String) -> String:
+ return str(data_for(id).get("name",id))
