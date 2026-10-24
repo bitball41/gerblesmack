@@ -15,16 +15,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    container:
-      image: barichello/godot-ci:4.5.2
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Godot export templates
-        shell: bash
-        run: |
-          mkdir -p "$HOME/.local/share/godot/export_templates"
-          cp -r /root/.local/share/godot/export_templates/4.5.2.stable "$HOME/.local/share/godot/export_templates/4.5.2.stable" || true
-          godot --version
+      - name: Install Godot 4.5.2 and Web export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.5.2
+          use-dotnet: false
+          include-templates: true
+      - name: Verify engine
+        run: godot --version
       - name: Import and parse Godot project
         run: godot --headless --path . --import
       - name: Build web version
