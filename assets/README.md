@@ -13,3 +13,6 @@ The ivory print framing, dark ink, upper-left highlights, muted card palettes, a
 The active interface uses **m6x11plus by Daniel Linssen**, downloaded from the creator: https://managore.itch.io/m6x11 . Permission is "Free to use with attribution," both on that page and in the font's license metadata. See `type/m6x11plus-NOTICE.txt`; an attribution is also visible in Options. Pixel Operator remains as an earlier unused asset.
 
 Shop objects (`plates/shop_sign.png`, `supply_pack.png`, and `voucher_*.png`) are manually specified pixel shapes in `tools/build_shop_art.py`, with the licensed m6x11plus font and existing upgrade pictograms. No image-generation model is used.
+
+
+Fracture Relics, upgrade pictograms, 15 Fractures, 10 board portraits, and 15 typed/size pack wrappers are manually specified in `tools/build_fracture_art.py`. It writes original Pillow pixel geometry; it does not call an image model. `tools/build_shop_art.py` includes voucher art for all 30 permanent upgrades. The new catalog keeps an individual card palette for every Relic and selects a contrasting ink color.

@@ -168,6 +168,9 @@ func run() -> void:
  g=game();var safe: String=g.export_run();var bad:Dictionary=g.snapshot();bad.f.curse=-2
  check(not g.restore(bad) and g.export_run()==safe,"invalid expansion save cannot mutate the live run")
  edge_checks()
+ trigger_checks()
+ duplicate_checks()
+ result_checks()
  print("Fracture model checks: ",assertions,"; failures: ",failures)
  quit(0 if failures==0 else 1)
 
@@ -250,3 +253,89 @@ func edge_checks() -> void:
  for count_draw in range(10000):
   if Cat.RELICS[Market.draw_item(g,Cat.RELICS.keys())].rarity=="Legendary": legendaries+=1
  check(legendaries>50 and legendaries<160,"Reliquary Legendary generation remains about one percent")
+
+func trigger_checks() -> void:
+ var g=game();only(g,["handbrake"]);g.cells.fill(null);g.cells[1]=g.tile(2);g.moves=10;g.floor_num=10
+ g.move("left")
+ check(g.moves==10,"Handbrake refunds one valid nonmerge swipe")
+ g.move("right")
+ check(g.moves==9,"Handbrake does not refund repeatedly")
+ g=game();only(g,["matchbox","spare_change","seedling","morgue","chain_reaction"]);plain(g)
+ g.cells[4]=g.tile(3);g.cells[5]=g.tile(4)
+ var event: Dictionary = {"index":0,"tile":g.tile(3,{"glass":true,"gold":true},true)}
+ var balance=g.money
+ var next: int = g.next_tile.e
+ Rules.on_shatter(g,event)
+ check(g.next_tile.fx.get("gold",false) and g.next_tile.fx.get("glass",false),"Matchbox enchants next natural tile")
+ check(g.money.cmp(balance.plus(5))==0,"Spare Change pays only actual Gold/Glass shatters")
+ check(g.next_tile.e==next+1,"Seedling improves next natural spawn")
+ check(g.cells.any(func(t): return t!=null and t.seal),"Morgue transfers a shattered seal")
+ check(g.cells[1].e==2 or g.cells[4].e==4,"Chain Reaction improves an adjacent tile")
+ g=game();only(g,["copper_coil","red_thread","clone_vat"]);plain(g);g.cells[4]=g.tile(3)
+ event={"index":0,"tile":g.tile(10,{"steel":true},true)}
+ Rules.on_merge(g,event)
+ check(g.cells[1].fx.get("steel",false) or g.cells[4].fx.get("steel",false),"Copper Coil spreads Steel to an adjacent tile")
+ check(g.next_tile.seal,"Red Thread seals the next natural tile")
+ check(g.cells.filter(func(t): return t!=null and t.e==10).size()==1,"Clone Vat creates exactly one plain copy")
+ g=game();only(g,["leech"]);plain(g)
+ var tile=g.tile(3,{"glass":true,"steel":true})
+ Rules.on_merge(g,{"index":0,"tile":tile})
+ check(tile.fx.size()==1 and is_equal_approx(g.relics[0].growth.to_float(),1.15),"Leech consumes one enhancement for permanent growth")
+ g=game();only(g,["spore_cloud"]);g.relics[0].edition="oversaturated";g.relics[0].cursed=true;plain(g);g.cells[4]=g.tile(3)
+ var copies := 0
+ for index in range(1000):
+  g.cells[1].fx={};g.cells[4].fx={}
+  Rules.on_merge(g,{"index":0,"tile":g.tile(3,{"gold":true})})
+  if g.cells[1].fx.has("gold"): copies+=1
+ check(copies>500 and copies<700,"Spore Cloud probability honors combined x3 power")
+ g=game();only(g,["cuckoo_clock"]);g.moves=0
+ for index in range(21): Rules.on_merge(g,{"index":0,"tile":g.tile(2)})
+ check(g.moves==2 and g.relics[0].carry==21,"Cuckoo Clock caps refunds at two per gate")
+ g=game();only(g,["spare_parts"]);g.relics[0].edition="oversaturated";g.relics[0].cursed=true
+ var retained := 0
+ for index in range(1000):
+  g.inventory=["venus"];g.use_item(0)
+  if not g.inventory.is_empty(): retained+=1
+ check(retained>500 and retained<700,"Spare Parts refund probability honors effective power")
+ g=game();only(g,["body_double"]);plain(g,2);g.inventory=["goldleaf"]
+ # Use the catalog's targeted enhancement spell rather than relying on display text.
+ var spell: String = ""
+ for id in Cat.SPELLS:
+  if Cat.SPELLS[id].action=="gold": spell=id
+ if spell!="":
+  g.inventory=[spell]
+  check(g.use_item(0,0) and g.cells[0].fx.get("gold",false) and g.cells[1].fx.get("gold",false),"Body Double also enchants a matching tile")
+ g=game();only(g,["carbon","recycling_bin","ghostwriter","echo"]);g.phase="shop"
+ check(g.sell_relic(3) and g.inventory.size()==1 and Cat.RUNES.has(g.inventory[0]) and Rules.actor(g,"ghostwriter").growth.cmp(2)==0,"relic sale resolves Recycling Bin and Ghostwriter once")
+ g=game();only(g,["double_exposure"]);g.cells.fill(null);g.cells[0]=g.tile(4,{"gold":true,"steel":true});Rules.after_spawn(g,0)
+ check(g.filled()==2 and g.cells.any(func(t): return t!=null and t.e==3 and t.fx.is_empty()),"Double Exposure creates a plain half-value copy")
+ g=game();only(g,["guillotine"]);plain(g,5);g.cells[4]=g.tile(10);g.phase="shop";g.f.pending.guillotine=1
+ check(g.workshop_action("guillotine") and g.cells[4]==null and is_equal_approx(g.relics[0].growth.to_float(),1.8),"Guillotine sacrifices the highest tile for x1.8 growth")
+ g=game();only(g,["chrysalis"]);plain(g)
+ check(g.workshop_action("chrysalis",0),"Chrysalis marks an eligible plain tile")
+ var marked: Dictionary = g.cells[0]
+ for index in range(3):
+  var merged: Dictionary = g.tile(int(marked.e)+1)
+  Rules.inherit_mark(merged,marked,g.tile(int(marked.e)))
+  marked=merged
+ check(marked.seal and marked.fx.size()==3 and not marked.has("chrysalis"),"Chrysalis completes after exactly three inherited merges")
+
+func duplicate_checks() -> void:
+ var g=game();only(g,["handbrake","carbon","echo"])
+ check(use(g,"schism",0) and g.relics.size()==2,"Schism can create duplicate passive relics")
+ g.phase="play";g.cells.fill(null);g.cells[1]=g.tile(2);g.moves=10;g.floor_num=10
+ g.move("left")
+ check(g.moves==11,"each copied Handbrake refunds its own first nonmerge swipe")
+ g=game();only(g,["devourer"]);g.relics[0].edition="oversaturated";g.f.pending.devourer=4;g.f.extra_slots=4;g.phase="shop"
+ for id in ["carbon","echo","odd","corner"]: g._grant(id)
+ for index in range(4): g.workshop_action("devour",1)
+ check(use(g,"liberation",0) and g.relics[0].abilities.size()==4,"changing edition retains already inherited abilities")
+ roundtrip(g,"Devourer changed edition")
+
+func result_checks() -> void:
+ var g=game("classic","cursed");g.gate=2
+ var played_target=g.target()
+ g.finish_gate(true)
+ check(g.f.curse==3 and g.target().cmp(played_target)==0,"Guardian result retains the target actually played")
+ check(g.target(2).cmp(played_target)>0,"next attempt preview includes the new Curse")
+ roundtrip(g,"Cursed completed target")

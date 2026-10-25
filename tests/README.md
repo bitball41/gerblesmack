@@ -18,4 +18,14 @@ Tests are excluded from the exported game.
 
 `gate_flow.gd` checks the persisted gate waiting state, preview RNG isolation, blocked moves before entry, authoritative target/move previews, completed gate status, retries and floor rollover, Options return, item-relative hover/selection anchors, tracking item movement, stable placement when re-inspecting one item, repeat-click dismissal, contextual purchasing, and full-height sidebar/shop bounds.
 
-The gate/UI flow suite also checks the compact tooltip footprint, the separate Board area, a deep-copied read-only tile preview, return to unchanged shop/pack state, all 15 boards across the two numbered pages, and seed/selection retention while paging.
+The gate/UI flow suite also checks the compact tooltip footprint, the separate Board area, a deep-copied read-only tile preview, return to unchanged shop/pack state, all 25 boards across three numbered pages, and seed/selection retention while paging.
+
+
+`scoring.gd` verifies model/presentation separation, actual Relic order, seal passes, explicit retriggers, exact totals, queue-free maximum speed, menu/run cancellation, and reduced motion.
+
+`fracture.gd` covers all new board starts in both modes, expansion save round trips, pack families/sizes and pending choices, Fractures and invalid-use atomicity, copied/inherited/reverse scoring, financial contracts, reserve/fusion/phantoms, edition power, old-save migration, Legendary/Sovereign generation, blocked-cell autoplay isolation, and malformed-save rejection. It compares each original Relic in production Fracture mode against the original mode, in addition to the frozen source fixtures.
+
+`fracture_ui.gd` exercises actual scene callbacks for companion and difficulty selection, three-page boards, offer paging/locking, floor-upgrade choices, Mega packs, item/Relic targeting, reserves, and Workshop operations. It checks font glyphs across all new catalog text. Browser review fixtures cover desktop and laptop layouts, dense inventories, blocked cells, and scoring speed. The QA bridge is never included in a production export.
+
+
+Optional browser acceptance: install Playwright locally, set `GODOT_BIN` if Godot is not on PATH, run `python3 tools/export_review.py`, then `node tests/browser_fracture.cjs`. Set `GATEFOLD_CHROMIUM` for a specific browser executable. Screenshots go to `build/review`. Rebuild the ordinary Web preset before publishing; the workflow always exports the production main scene.

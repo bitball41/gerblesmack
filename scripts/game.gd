@@ -78,6 +78,7 @@ func max_pocket() -> int:
  return 3+int(has_upgrade("pocket1"))+(2 if has_upgrade("satchel1") else 0)
 
 func target(index: int = -1):
+ if index<0 and phase in ["reward","failed","over"] and result_summary.has("target"): return Num.of(result_summary.target)
  var selected: int = gate if index<0 else index
  var value = Num.power(3,floor_num-1).times([96,160,256][selected]).times(b().get("target_mult",1))
  if not legacy_compat and floor_num>8:
@@ -431,7 +432,11 @@ func move(direction: String, capture_steps: bool = true) -> bool:
  last_score_steps=gain.steps
  score=score.plus(gain.score)
  total_score=total_score.plus(gain.score)
- if not legacy_compat: Rules.after_move(self,outcome.events)
+ if not legacy_compat:
+  Rules.after_move(self,outcome.events)
+  if board_id=="vortex" and swipes%4==0:
+   for step in last_score_steps:
+    if step.has("index"): step.index=(int(step.index)%4)*4+3-int(step.index/4.0)
  best_exp=maxi(best_exp,highest())
  spawn()
  if not legacy_compat: Rules.after_arrival(self)
@@ -458,6 +463,7 @@ func recover_board() -> void:
  while filled()<2: spawn()
 
 func finish_gate(win: bool) -> void:
+ var completed_target = target()
  if phase!="play": return
  pending_outcome=win
  jammed=false
@@ -472,6 +478,7 @@ func finish_gate(win: bool) -> void:
  money=money.minus(paid_fee)
  banked=mini(int(b().get("bank_limit",0)),moves) if win else 0
  result_summary={"base":basic,"efficiency":efficiency,"interest":inc,"board_bonus":bonus,"gross":gross,"fee":paid_fee,"banked":banked}
+ if not legacy_compat: result_summary.target=completed_target
  if win:
   cleared+=1
   for relic in relics:
@@ -832,7 +839,8 @@ func restore(state) -> bool:
   if relic is not Dictionary or not Cat.RELICS.has(relic.get("id")) or (seen.has(relic.id) and int(state.get("version",0))<3) or not _valid_num(relic.get("growth")): return false
   if not _finite(relic.get("charge")) or not _finite(relic.get("carry")): return false
   if relic.get("edition","") not in ["","unbound","oversaturated"] or relic.get("cursed",false) is not bool or relic.get("echoed",false) is not bool: return false
-  if relic.get("abilities",[]) is not Array or relic.get("abilities",[]).size()>int(ceil(2*Rules.power(relic))): return false
+  if not _finite(relic.get("echo_passes",2)) or relic.get("echo_passes",2)<2: return false
+  if relic.get("abilities",[]) is not Array or relic.get("abilities",[]).size()>6: return false
   for ability in relic.get("abilities",[]):
    if ability is not Dictionary or ability.get("id") not in Rules.COPIABLE or not _valid_num(ability.get("growth")) or not _finite(ability.get("charge")) or not _finite(ability.get("carry")) or ability.get("edition","") not in ["","unbound","oversaturated"] or ability.get("cursed",false) is not bool: return false
   if relic.has("uid"):
@@ -853,7 +861,10 @@ func restore(state) -> bool:
  if runes is not Dictionary: return false
  for key in ["spawn","gold","glass","steel","seal"]:
   if not _finite(runes.get(key)) or runes[key]<0: return false
+ if state.get("result_summary",{}) is not Dictionary: return false
+ if state.get("result_summary",{}).has("target") and not _valid_num(state.result_summary.target): return false
  if state.has("f") and not Rules.valid_state(state.f): return false
+ if state.has("f") and uids.any(func(uid): return uid>state.f.get("serial",0)): return false
  if state.has("f") and int(state.f.get("block",-1))>=0 and state.cells[int(state.f.block)]!=null: return false
  last_score_steps=[]
  f=Rules.defaults()
@@ -900,6 +911,8 @@ func import_run(text: String) -> bool:
 func _legacy_state(data: Dictionary) -> Dictionary:
  if data.get("board") is not Array or data.get("jokers") is not Array or data.get("inventory") is not Array: return {}
  var state: Dictionary = snapshot()
+ state.version=2
+ state.erase("f")
  var names := {"seed":"seed_text","boardId":"board_id","board":"cells","jokers":"relics","vouchers":"upgrades","planets":"rune_levels","planetUses":"rune_uses","floor":"floor_num","totalScore":"total_score","bestTile":"best_exp","gateSwipes":"gate_swipes","lastDir":"last_dir","bankedMoves":"banked","rng":"rng_state"}
  for key in ["phase","gate","hp","maxHp","moves","money","score","cleared","failed","swipes","next","jammed","endless"]:
   var native_key: String = "max_hp" if key=="maxHp" else "next_tile" if key=="next" else key

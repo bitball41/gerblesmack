@@ -86,7 +86,7 @@ func show_cells(data: Array, pop_indices: Array = [], new_indices: Array = []) -
   elif new_indices.has(index): tile_node.appear()
  queue_redraw()
 
-func animate_move(before: Array, after: Array, direction: String, duration: float = .135) -> void:
+func animate_move(before: Array, after: Array, direction: String, duration: float = .135, turn_cells: Array = []) -> void:
  if not motion_enabled or not is_visible_in_tree():
   show_cells(after)
   animation_finished.emit()
@@ -120,11 +120,34 @@ func animate_move(before: Array, after: Array, direction: String, duration: floa
  _animation.chain().tween_callback(func():
   if token!=_epoch or not is_inside_tree(): return
   _animation=null
+  if not turn_cells.is_empty():
+   _animate_turn(turn_cells,after,maxf(.07,duration*1.35),merged)
+   return
   var appeared: Array = []
   var occupied_destinations: Array = destinations.values()
   for index in range(16):
    if after[index]!=null and not occupied_destinations.has(index): appeared.append(index)
   show_cells(after,merged,appeared)
+  animation_finished.emit()
+ )
+
+func _animate_turn(intermediate: Array, after: Array, duration: float, merged: Array) -> void:
+ show_cells(intermediate,merged)
+ animating=true
+ var token: int = _epoch
+ _animation=create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+ var occupied: Array = []
+ for index in tiles:
+  var destination: int = (int(index)%4)*4+3-int(index/4.0)
+  occupied.append(destination)
+  _animation.tween_property(tiles[index],"position",_cell_position(destination),duration)
+ _animation.chain().tween_callback(func():
+  if token!=_epoch or not is_inside_tree(): return
+  _animation=null
+  var appeared: Array = []
+  for index in range(16):
+   if after[index]!=null and not occupied.has(index): appeared.append(index)
+  show_cells(after,[],appeared)
   animation_finished.emit()
  )
 

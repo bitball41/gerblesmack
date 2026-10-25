@@ -50,6 +50,13 @@ static func fracture_reason(game, id: String, target: int = -1) -> String:
    if game._eligible_relics().filter(func(item): return Cat.RELICS[item].rarity=="Legendary").is_empty(): return "All Legendary relics are already owned."
  return ""
 
+static func usable_fracture(game, id: String) -> bool:
+ if not Cat.FRACTURES.has(id): return false
+ var type: String = Cat.FRACTURES[id].target
+ if type=="none": return fracture_reason(game,id).is_empty()
+ var count: int = game.relics.size() if type=="relic" else 16
+ return range(count).any(func(index): return fracture_reason(game,id,index).is_empty())
+
 static func use_fracture(game, id: String, target: int = -1) -> bool:
  if not fracture_reason(game,id,target).is_empty(): return false
  var type: String = Cat.FRACTURES[id].target
@@ -79,7 +86,7 @@ static func use_fracture(game, id: String, target: int = -1) -> bool:
    if pool.is_empty(): return false
    var replacement: String = game.rng.pick(pool)
    var tags: Dictionary = {}
-   for key in ["edition","cursed","echoed"]:
+   for key in ["edition","cursed","echoed","echo_passes"]:
     if selected.has(key): tags[key]=selected[key]
    game.relics.remove_at(target)
    game._grant(replacement,tags)
@@ -193,7 +200,7 @@ static func exchange_nomad(game, index: int) -> bool:
  if pool.is_empty(): return false
  var id: String = game.rng.pick(pool)
  var tags: Dictionary = {}
- for key in ["edition","cursed","echoed"]:
+ for key in ["edition","cursed","echoed","echo_passes"]:
   if old.has(key): tags[key]=old[key]
  game.relics.remove_at(index)
  game._grant(id,tags)
@@ -263,7 +270,7 @@ static func workshop(game, action: String, index: int = -1, other: int = -1, cho
   "echo":
    if int(game.f.pending.get("crown_echoes",0))<=0 or not valid_relic(game,index) or game.relics[index].get("echoed",false) or game.relics[index].id not in Rules.SCORING: return false
    game.relics[index].echoed=true
-   game.relics[index].echo_passes=maxi(2,int(ceil(2*Rules.amount(game,"crown_echoes"))))
+   game.relics[index].echo_passes=maxi(2,int(ceil(2*game.relics.filter(func(r): return r.id=="crown_echoes").reduce(func(value,r): return maxf(value,Rules.power(r)),1.0))))
    game.f.pending.crown_echoes-=1
   "duplicate":
    if int(game.f.pending.get("satchel",0))<=0 or index<0 or index>=game.inventory.size(): return false

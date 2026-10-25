@@ -9,8 +9,10 @@ func _ready() -> void:
  var scene: String = "shop"
  if OS.has_feature("web"): scene=str(JavaScriptBridge.eval("new URLSearchParams(location.search).get('qa') || 'shop'"))
  qa_scene=scene
- if scene=="home": return
- var board_id: String = "nomad" if scene=="fracture_nomad" else "labyrinth" if scene=="fracture_blocked" else "blue" if scene.begins_with("clarity") or scene.begins_with("scoring") else "classic" if scene.begins_with("fracture") else "black"
+ if scene in ["home","live"]:
+  if scene=="live": g.persist_enabled=true
+  return
+ var board_id: String = "nomad" if scene=="fracture_nomad" else "vortex" if scene=="fracture_vortex" else "labyrinth" if scene=="fracture_blocked" else "blue" if scene.begins_with("clarity") or scene.begins_with("scoring") else "classic" if scene.begins_with("fracture") else "black"
  start_run(board_id,"POLISH","cursed" if scene.begins_with("fracture") and scene!="fracture_nomad" else "normal")
  if scene=="fracture_nomad": return
  if scene=="gates": return
@@ -75,6 +77,13 @@ func _process(_delta: float) -> void:
  report.block=g.f.block
  report.cells=g.cells.map(func(t): return t.e if t!=null else 0)
  report.triggering=[]
+ report.card_controls=[]
+ report.boards=[]
+ for node in find_children("*","Control",true,false):
+  if not node.is_visible_in_tree() or node.get_script()==null: continue
+  var script: String = node.get_script().resource_path
+  if script=="res://ui/card_view.gd": report.card_controls.append({"id":node.item_id,"rect":_bounds(node),"owner":node.get_parent().name,"selected":node.selected})
+  if script=="res://ui/board_view.gd": report.boards.append({"name":node.name,"rect":_bounds(node)})
  report.owned_cards=[]
  for index in range(run_view.relic_cards.size()):
   var card: Control = run_view.relic_cards[index]
@@ -151,6 +160,9 @@ func _fracture_fixture(scene: String) -> void:
  g.cells.fill(null)
  for index in [0,1,4,5,8,9]: g.cells[index]=g.tile(2+index%3)
  g.next_tile=g.tile(1)
+ if scene=="fracture_vortex":
+  g.swipes=3;g.floor_num=10
+  _refresh_run();return
  if scene=="fracture_blocked":
   g.f.block=6
   _refresh_run();return
@@ -163,6 +175,13 @@ func _fracture_fixture(scene: String) -> void:
  g.f.floor_choices=["shatterproof3","wagers3"]
  g.f.pack_offers=[{"type":"fracture","size":"Mega","bought":false},{"type":"reliquary","size":"Jumbo","bought":false}]
  _refresh_run();_show_shop()
+ if scene=="fracture_dense":
+  g.f.extra_slots=12
+  for id in ["devourer","monolith","feedback","perpetuum","paradox","conductor","mobius"]: g._grant(id)
+  g.upgrades.append("pocket1")
+  g.inventory=["liberation","genesis","venus","mars","mercy","hourglass"]
+  g.f.phantoms=[{"id":"venus","tags":{}},{"id":"mercy","tags":{}},{"id":"genesis","tags":{}}]
+  _refresh_run(false)
  if scene=="fracture_workshop": _show_workshop()
  if scene=="fracture_pack":
   g.pack_open(0)

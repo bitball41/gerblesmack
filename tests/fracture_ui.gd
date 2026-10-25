@@ -23,7 +23,7 @@ func shop() -> void:
  ui._show_shop()
 func run() -> void:
  ui=MAIN.instantiate();root.add_child(ui)
- ui.g.persist_enabled=false;ui.effects.sound_enabled=false;ui.reduced_motion=false
+ ui.g.persist_enabled=false;ui.effects.sound_enabled=false;ui.reduced_motion=false;ui.auto_speed=1
  ui.start_run("nomad","COMPANION","normal")
  await process_frame
  check(ui.overlay.view_id=="choice" and ui.g.phase=="gates","Nomad opens a real companion choice")
@@ -125,6 +125,32 @@ func run() -> void:
  ui._run_action("upgrades")
  await process_frame
  check(ui.overlay.view_id=="choice" and button(ui.overlay,"Details")!=null,"upgrade artwork opens a readable owned-upgrade gallery")
+ ui._close_overlay()
+ ui.g.f.extra_slots=12
+ for id in ["devourer","monolith","feedback","perpetuum","paradox","conductor","mobius"]: ui.g._grant(id)
+ ui._refresh_run(false)
+ await process_frame
+ var visible_cards: Array=ui.run_view.relic_cards.filter(func(card): return card.visible)
+ check(visible_cards.size()==5 and ui.run_view._relic_pager.visible,"large relic inventory uses five full-size cards per page")
+ for index in range(1,visible_cards.size()):
+  check(visible_cards[index-1].get_global_rect().end.x<visible_cards[index].get_global_rect().position.x,"full relic slots stay separated")
+ ui.run_view._relic_pager.pressed.emit()
+ check(not ui.run_view.relic_cards[0].visible and ui.run_view.relic_cards[5].visible,"relic inventory pager reaches later owned cards")
+ ui.g.inventory=["venus","mars","mercy","hourglass","genesis"]
+ ui.g.f.phantoms=[{"id":"venus","tags":{}},{"id":"mars","tags":{}},{"id":"mercy","tags":{}}]
+ ui._refresh_run(false)
+ check(ui.run_view.pocket_cards.filter(func(card): return card.visible).size()==6 and ui.run_view._pocket_pager.visible,"phantom overflow uses pocket pages")
+ ui.run_view._pocket_pager.pressed.emit()
+ check(ui.run_view.pocket_cards.filter(func(card): return card.visible).size()==2,"pocket pager exposes phantom cards without shrinking")
+ ui.start_run("vortex","TURNING","normal");ui._begin_gate()
+ ui.g.swipes=3;ui.g.floor_num=10;ui.g.cells.fill(null);ui.g.cells[0]=ui.g.tile(1);ui.g.cells[1]=ui.g.tile(1)
+ ui._refresh_run()
+ ui._request_move("left")
+ await create_timer(.2).timeout
+ check(ui.run_view.board.animating,"Vortex has a visible turn after the swipe")
+ await create_timer(.35).timeout
+ ui._settle_move()
+ check(ui.run_view.board.cells==ui.g.cells and not ui.run_view.board.animating,"Vortex settles to authoritative cells without a stale callback")
  for pool in [Cat.RELICS,Cat.UPGRADES,Cat.FRACTURES]:
   for id in pool:
    var text: String=ui.UIStyle.readable(pool[id].name+" "+pool[id].desc)

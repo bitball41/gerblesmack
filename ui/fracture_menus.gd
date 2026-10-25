@@ -41,7 +41,7 @@ static func pocket_entries(host, predicate: Callable) -> Array:
  return entries
 
 static func picker(host, title: String, detail: String, entries: Array, callback: Callable, label: String = "Choose", can_close: bool = true) -> void:
- var height: int = 580 if entries.size()<=4 else 740
+ var height: int = 500 if entries.size()<=4 else 740
  var col: VBoxContainer = host._open(title,"choice",Vector2(1000,height),can_close)
  col.add_child(note(detail))
  var grid := GridContainer.new()

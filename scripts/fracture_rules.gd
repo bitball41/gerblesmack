@@ -17,13 +17,18 @@ static func actor(game, id: String) -> Dictionary:
  return {}
 
 static func amount(game, id: String) -> float:
- var found: Dictionary = actor(game,id)
- return power(found) if not found.is_empty() else 0.0
+ var total := 0.0
+ for relic in game.relics:
+  if relic.id==id: total+=power(relic)
+ return total
+
+static func gate_key(relic: Dictionary, name: String) -> String:
+ return name+":"+str(relic.get("uid",relic.id))
 
 static func attach(game, relic: Dictionary, tags: Dictionary = {}) -> void:
  game.f.serial+=1
  relic.uid=game.f.serial
- for key in ["edition","cursed","echoed"]:
+ for key in ["edition","cursed","echoed","echo_passes"]:
   if tags.has(key): relic[key]=tags[key]
  if relic.get("cursed",false) and game.f.difficulty=="cursed": game.f.curse+=2
 
@@ -81,13 +86,16 @@ static func after_spawn(game, index: int) -> void:
  if game.board_id=="twinfall" and int(game.f.spawns)%6==0:
   copy_tile(game,tile)
   game.f.notice="Twinfall / second arrival"
- if game.has_relic("double_exposure") and int(game.f.gate.get("exposure",0))<int(ceil(amount(game,"double_exposure"))) and tile.fx.size()>=2 and tile.e>1:
-  var copied := false
-  for count in range(int(ceil(amount(game,"double_exposure")))):
-   if copy_tile(game,game.tile(int(tile.e)-1))>=0: copied=true
-  if copied:
-   game.f.gate.exposure=int(game.f.gate.get("exposure",0))+1
-   game.f.notice="Double Exposure / plain copy"
+ for relic in game.relics:
+  if relic.id!="double_exposure": continue
+  var key: String = gate_key(relic,"exposure")
+  if int(game.f.gate.get(key,0))<int(ceil(power(relic))) and tile.fx.size()>=2 and tile.e>1:
+   var copied := false
+   for count in range(int(ceil(power(relic)))):
+    if copy_tile(game,game.tile(int(tile.e)-1))>=0: copied=true
+   if copied:
+    game.f.gate[key]=int(game.f.gate.get(key,0))+1
+    game.f.notice="Double Exposure / plain copy"
 
 static func free_cells(game) -> Array:
  var free: Array = []
@@ -166,6 +174,7 @@ static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
   var relic: Dictionary = entry.relic
   var boost: float = entry.boost
   var note := ""
+  var prefix: String = str(entry.actor.get("uid",entry.actor.id))+":"+str(relic.get("uid",relic.id))+":"
   match relic.id:
    "leech":
     for key in ["glass","steel","gold"]:
@@ -176,19 +185,19 @@ static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
       break
    "cuckoo_clock":
     relic.carry=int(relic.carry)+1
-    if int(relic.carry)%7==0 and int(game.f.gate.get("clock",0))<int(2*boost):
-     game.f.gate.clock=int(game.f.gate.get("clock",0))+1
+    if int(relic.carry)%7==0 and int(game.f.gate.get(prefix+"clock",0))<int(2*boost):
+     game.f.gate[prefix+"clock"]=int(game.f.gate.get(prefix+"clock",0))+1
      game.moves+=int(ceil(boost))
      note="+%d move" % int(ceil(boost))
    "copper_coil":
-    if not preview and tile.fx.get("steel",false) and int(game.f.gate.get("coil",0))<int(ceil(boost)):
+    if not preview and tile.fx.get("steel",false) and int(game.f.gate.get(prefix+"coil",0))<int(ceil(boost)):
      var targets: Array = adjacent(event.index).filter(func(i): return game.cells[i]!=null and not game.cells[i].fx.get("steel",false))
      for count in range(mini(targets.size(),int(ceil(boost)))):
       var target: int = game.rng.pick(targets)
       targets.erase(target)
       game.cells[target].fx.steel=true
       note="Steel spread"
-     if not note.is_empty(): game.f.gate.coil=int(game.f.gate.get("coil",0))+1
+     if not note.is_empty(): game.f.gate[prefix+"coil"]=int(game.f.gate.get(prefix+"coil",0))+1
    "spore_cloud":
     if not preview and not tile.fx.is_empty():
      var neighbors: Array = adjacent(event.index).filter(func(i): return game.cells[i]!=null)
@@ -199,15 +208,15 @@ static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
        game.cells[target].fx.merge(tile.fx,true)
       note="Enhancements copied"
    "red_thread":
-    if tile.seal and int(game.f.gate.get("red_thread",0))<int(ceil(boost)):
+    if tile.seal and int(game.f.gate.get(prefix+"red_thread",0))<int(ceil(boost)):
      game.next_tile.seal=true
-     game.f.gate.red_thread=int(game.f.gate.get("red_thread",0))+1
+     game.f.gate[prefix+"red_thread"]=int(game.f.gate.get(prefix+"red_thread",0))+1
      note="Next: sealed"
    "clone_vat":
-    if not preview and tile.e>=10 and int(game.f.gate.get("clone",0))<int(ceil(boost)):
+    if not preview and tile.e>=10 and int(game.f.gate.get(prefix+"clone",0))<int(ceil(boost)):
      for count in range(int(ceil(boost))):
       if copy_tile(game,game.tile(int(tile.e)))>=0: note="Plain copy"
-     if not note.is_empty(): game.f.gate.clone=int(game.f.gate.get("clone",0))+1
+     if not note.is_empty(): game.f.gate[prefix+"clone"]=int(game.f.gate.get(prefix+"clone",0))+1
   if not note.is_empty(): cues.append({"id":entry.actor.id,"slot":entry.slot,"text":note})
  return cues
 
@@ -224,48 +233,52 @@ static func on_shatter(game, event: Dictionary) -> Array:
  for relic in game.relics:
   var boost: float = power(relic)
   var note := ""
+  var prefix: String = str(relic.get("uid",relic.id))+":"
   match relic.id:
    "matchbox":
-    if int(game.f.gate.get("matchbox",0))<int(ceil(boost)):
+    if int(game.f.gate.get(prefix+"matchbox",0))<int(ceil(boost)):
      game.next_tile.fx.gold=true
      game.next_tile.fx.glass=true
-     game.f.gate.matchbox=int(game.f.gate.get("matchbox",0))+1
+     game.f.gate[prefix+"matchbox"]=int(game.f.gate.get(prefix+"matchbox",0))+1
      note="Next: Gold + Glass"
    "spare_change":
     if event.tile.fx.get("gold",false):
      var paid = game.earn(5*boost)
      note="+$"+paid.fmt()
    "seedling":
-    var count: int = int(game.f.gate.get("seedling",0))
+    var count: int = int(game.f.gate.get(prefix+"seedling",0))
     if count<int(3*boost):
      game.next_tile.e+=int(ceil(boost))
-     game.f.gate.seedling=count+1
+     game.f.gate[prefix+"seedling"]=count+1
      note="Next spawn +%d tier" % int(ceil(boost))
    "morgue":
-    if event.tile.seal and int(game.f.gate.get("morgue",0))<int(ceil(boost)):
+    if event.tile.seal and int(game.f.gate.get(prefix+"morgue",0))<int(ceil(boost)):
      var list: Array = occupied(game).filter(func(i): return not game.cells[i].seal)
      if not list.is_empty():
       for count in range(mini(list.size(),int(ceil(boost)))):
        var target: int = game.rng.pick(list)
        list.erase(target)
        game.cells[target].seal=true
-      game.f.gate.morgue=int(game.f.gate.get("morgue",0))+1
+      game.f.gate[prefix+"morgue"]=int(game.f.gate.get(prefix+"morgue",0))+1
       note="Seal transferred"
    "chain_reaction":
-    if int(game.f.gate.get("chain_reaction",0))<int(3*boost):
+    if int(game.f.gate.get(prefix+"chain_reaction",0))<int(3*boost):
      var target: int = neighbor(game,event.index)
      if target>=0:
       game.cells[target].e+=int(ceil(boost))
-      game.f.gate.chain_reaction=int(game.f.gate.get("chain_reaction",0))+1
+      game.f.gate[prefix+"chain_reaction"]=int(game.f.gate.get(prefix+"chain_reaction",0))+1
       note="Adjacent +%d tier" % int(ceil(boost))
   if not note.is_empty(): cues.append({"id":relic.id,"slot":game.relics.find(relic),"text":note})
  return cues
 
 static func after_move(game, events: Array) -> void:
- if events.is_empty() and game.has_relic("handbrake") and not game.f.gate.get("handbrake",false):
-  game.moves+=int(ceil(amount(game,"handbrake")))
-  game.f.gate.handbrake=true
-  game.f.notice="Handbrake / move refunded"
+ if events.is_empty():
+  for relic in game.relics:
+   var key: String = gate_key(relic,"handbrake")
+   if relic.id=="handbrake" and not game.f.gate.get(key,false):
+    game.moves+=int(ceil(power(relic)))
+    game.f.gate[key]=true
+    game.f.notice="Handbrake / move refunded"
  if game.board_id=="vortex" and game.swipes%4==0:
   var cells: Array = game.cells.duplicate(true)
   for index in range(16): game.cells[(index%4)*4+3-int(index/4.0)]=cells[index]
@@ -278,14 +291,16 @@ static func after_move(game, events: Array) -> void:
    game.f.notice="Reactor / smallest tile +1 tier"
 
 static func after_arrival(game) -> void:
- if game.has_relic("shipping_crate") and not game.f.gate.get("shipping",false) and game.inventory.size()<game.max_pocket():
+ for relic in game.relics:
+  var key: String = gate_key(relic,"shipping")
+  if relic.id!="shipping_crate" or game.f.gate.get(key,false) or game.inventory.size()>=game.max_pocket(): continue
   var values: Array = []
   for tile in game.cells:
    if tile!=null and not values.has(tile.e): values.append(tile.e)
   if values.size()>=4:
-   for count in range(int(ceil(amount(game,"shipping_crate")))):
+   for count in range(int(ceil(power(relic)))):
     if game.inventory.size()<game.max_pocket(): game._grant(game.rng.pick(Cat.SPELLS.keys()))
-   game.f.gate.shipping=true
+   game.f.gate[key]=true
    game.f.notice="Shipping Crate / Spell received"
 
 static func growth_after_win(game) -> void:

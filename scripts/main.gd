@@ -342,7 +342,7 @@ func _play(direction: String) -> void:
   run_view.board.show_cells(g.cells)
   _begin_score_sequence()
  else:
-  run_view.board.animate_move(before,g.cells,direction,slide_duration/maxi(1,auto_speed) if auto_on else slide_duration)
+  run_view.board.animate_move(before,g.cells,direction,slide_duration/maxi(1,auto_speed) if auto_on else slide_duration,slid.board if show_scoring and g.board_id=="vortex" and g.swipes%4==0 else [])
 
 func _begin_score_sequence() -> void:
  if _move_epoch!=_action_epoch or not moving: return
@@ -531,6 +531,8 @@ func _show_result() -> void:
  col.add_child(_paragraph("FLOOR %d · GATE %d / 3" % [g.floor_num,g.gate+1],UIStyle.MUTED,12))
  col.add_child(UIStyle.label("%s / %s" % [g.score.fmt(),g.target().fmt()],31,UIStyle.CREAM,true))
  if not won: col.add_child(_paragraph("-1 Life. Your two smallest tiles were cleared. Visit the shop, then retry this gate." if g.hp>0 else "Your engine reached floor %d and cleared %d gates." % [g.floor_num,g.cleared]))
+ if str(g.f.notice).begins_with("Loan Shark"):
+  col.add_child(_paragraph(str(g.f.notice),UIStyle.RED))
  if not g.result_summary.is_empty():
   var summary: Dictionary = g.result_summary
   col.add_child(_paragraph("REWARD $%s   ·   INTEREST $%s   ·   FEE $%s" % [Num.of(summary.gross).fmt(),Num.of(summary.interest).fmt(),Num.of(summary.fee).fmt()],UIStyle.GOLD,14))
@@ -971,7 +973,10 @@ func _show_context(id: String, kind: String, index: int) -> void:
   if index<g.relics.size()-1: order.add_child(_button("Right >",func(): _reorder_to(index,index+1)))
   if order.get_child_count()>0: col.add_child(order)
  elif g.phase in ["play","shop"]:
-  col.add_child(_button("Use",func(): _clear_context(); _select_item(index,"phantom" if kind=="phantom" else "pocket"),Color("477eaa")))
+  var use: Button = _button("Use",func(): _clear_context(); _select_item(index,"phantom" if kind=="phantom" else "pocket"),Color("477eaa"))
+  use.disabled=Cat.FRACTURES.has(id) and not g.Actions.usable_fracture(g,id)
+  col.add_child(use)
+  if use.disabled: col.add_child(_paragraph("No eligible target right now."))
   if kind!="phantom" and g.has_upgrade("satchel2"):
    var store: Button = _button("Store in reserve",func():
     if g.Market.put_in_reserve(g,index): _refresh_run(false)
