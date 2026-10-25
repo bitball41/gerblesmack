@@ -152,10 +152,17 @@ static func sequence(game, reverse: bool = false) -> Array:
   elif relic.id=="devourer": effects=relic.get("abilities",[])
   for effect in effects:
    var boost: float = power(relic)*(power(effect) if effect!=relic else 1.0)
-   result.append({"relic":effect,"actor":relic,"slot":index,"only_score":reverse or relic.id=="conductor","boost":boost})
-   if relic.get("echoed",false):
-    for count in range(maxi(2,int(relic.get("echo_passes",2)))-1): result.append({"relic":effect,"actor":relic,"slot":index,"only_score":true,"boost":boost})
+   # A physical relic's own Echoes are counted once. Devourer also retains
+   # each absorbed ability's independent Echoes; only its first pass can grow
+   # or pay out. Conductor keeps its existing scoring-only copy semantics.
+   var inherited_passes: int = echo_passes(effect) if relic.id=="devourer" else 1
+   for actor_pass in range(echo_passes(relic)):
+    for effect_pass in range(inherited_passes):
+     result.append({"relic":effect,"actor":relic,"slot":index,"only_score":reverse or relic.id=="conductor" or actor_pass>0 or effect_pass>0,"boost":boost})
  return result
+
+static func echo_passes(relic: Dictionary) -> int:
+ return maxi(2,int(relic.get("echo_passes",2))) if relic.get("echoed",false) else 1
 
 static func physical_effects(game) -> Array:
  var effects: Array = []
@@ -403,10 +410,11 @@ static func valid_state(data) -> bool:
    if value is not bool and ((value is not int and value is not float) or not is_finite(float(value)) or value<0): return false
  for key in ["debt","wager","investment"]:
   var value = data.get(key,{"__num":[0,0]})
-  if value is not Dictionary or value.get("__num") is not Array or value.__num.size()!=2: return false
+  if value is not Dictionary or value.get("__num") is not Array or value.__num.size() not in [2,3]: return false
   for number in value.__num:
    if (number is not float and number is not int) or not is_finite(float(number)): return false
   if value.__num[0]<0: return false
+  if value.__num.size()==3 and (value.__num[2]<0 or value.__num[2]!=floorf(value.__num[2])): return false
  for key in ["offer_tags","pack_tags"]:
   for id in data.get(key,{}):
    var tags = data[key][id]

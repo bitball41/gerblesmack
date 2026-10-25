@@ -1,6 +1,7 @@
 extends RefCounted
 const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
+const TriggerCount = preload("res://scripts/trigger_count.gd")
 const RunRng = preload("res://scripts/run_rng.gd")
 const Rules = preload("res://scripts/fracture_rules.gd")
 const Market = preload("res://scripts/fracture_market.gd")
@@ -9,6 +10,7 @@ const Actions = preload("res://scripts/fracture_actions.gd")
 const SAVE_PATH = "user://gatefold-godot-v1.json"
 const PHASES = ["play","reward","failed","shop","gates","over"]
 var rng = RunRng.new()
+# Test harness only; imported old saves use the corrected production scorer.
 var legacy_compat := false
 var f: Dictionary = Rules.defaults()
 var seed_text := ""
@@ -38,7 +40,7 @@ var phase := "home"
 var result_text := ""
 var result_summary := {}
 var last_merge = Num.new()
-var last_triggers := 0
+var last_triggers = 0
 var last_entries: Array = []
 var fired_relics: Array = []
 # Ephemeral presentation receipts; never serialized or replayed into the rules.
@@ -254,10 +256,10 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
  var steps: Array = []
  var full = Num.new()
  var income = Num.new()
- var trigger_count := 0
+ var trigger_count = TriggerCount.new()
  var steel_count := 0
  var max_e := 0
- var chain_pos := 0
+ var chain_pos = TriggerCount.new()
  var fired: Array = []
  var entries: Array = []
  var reverse_chain: bool = has_relic("mobius") and int(self.f.gate.get("mobius",0))<int(ceil(Rules.amount(self,"mobius"))) and not events.is_empty()
@@ -282,10 +284,10 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
     fired.append("greed")
     if record: steps.append({"kind":"relic","id":"greed","value":Num.new(),"text":"+$%d Gold" % int(4*Rules.amount(self,"greed")*(2 if has_upgrade("trade3") else 1))})
   var points = Num.new()
-  var event_triggers := 0
+  var event_triggers = TriggerCount.new()
   for pass_index in range(2 if t.seal else 1):
    var value = Num.power(2,t.e).times(Num.power(1.25,steel_count)).times(2 if t.fx.get("glass",false) else 1)
-   var repeats := 1
+   var repeats = TriggerCount.new(1)
    if record: steps.append({"kind":"merge","index":event.index,"value":value if eligible else Num.new(),"text":"Seal retrigger" if pass_index>0 else "Merge %d / %d" % [ei+1,events.size()]})
    var applications: Array = Rules.sequence(self)
    if reverse_chain: applications.append_array(Rules.sequence(self,true))
@@ -296,8 +298,12 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
     var only_score: bool = bool(application.only_score)
     var id: String = relic.id
     var fired_before: int = fired.size()
-    var repeats_before: int = repeats
+    var repeats_before = repeats.copy()
+    var scoring_repeats = TriggerCount.new(1) if legacy_compat else repeats_before
     var income_before = income
+    var value_before = value
+    var operation := ""
+    var operand = Num.new()
     if id=="business" and not only_score and pass_index==0 and t.e<=3:
      income=income.plus(earn(boost))
      fired.append(physical.id)
@@ -310,9 +316,13 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
      continue
     var factor = null
     match id:
-     "carbon": value=value.plus(8*boost); fired.append(physical.id)
+     "carbon":
+      operation="add"; operand=Num.of(8*boost)
+      value=value.plus(operand.times(scoring_repeats.number())); fired.append(physical.id)
      "battery":
-      if float(relic.charge)>0: value=value.plus(float(relic.charge)*boost); fired.append(physical.id)
+      if float(relic.charge)>0:
+       operation="add"; operand=Num.of(float(relic.charge)*boost)
+       value=value.plus(operand.times(scoring_repeats.number())); fired.append(physical.id)
      "corner":
       if is_corner(event.index): factor=2
      "horizon":
@@ -330,45 +340,62 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
      "charity": factor=money.div(10).floored().plus(1)
      "apprentice": factor=1+rune_uses*.25
      "monolith","compound","leech","guillotine","ghostwriter": factor=relic.growth
-     "echo": factor=2; repeats*=maxi(1,int(2*boost))
+     "echo": factor=2; repeats=repeats.times(maxi(1,int(2*boost)))
      "mirror":
-      if ei==0: factor=3; repeats*=maxi(1,int(3*boost))
+      if ei==0: factor=3; repeats=repeats.times(maxi(1,int(3*boost)))
      "ascension":
-      if t.e>=10: factor=3; repeats*=maxi(1,int(3*boost))
+      if t.e>=10: factor=3; repeats=repeats.times(maxi(1,int(3*boost)))
      "domino":
       if ei==events.size()-1 and events.size()>1:
        factor=pow(2*boost,events.size()-1)
-       repeats*=maxi(1,int(factor))
+       repeats=repeats.times(maxi(1,int(factor)))
      "feedback":
-      var extra: int = maxi(0,int(floorf((int(relic.carry)+repeats-1)/4.0)))
-      if extra>0: factor=float(repeats+int(extra*boost))/repeats
-      repeats+=int(extra*boost)
-      relic.carry=(int(relic.carry)+repeats)%5
+      # Every generated trigger also advances this counter. Exact integer
+      # division keeps carries correct even beyond the native int range.
+      var extra = repeats.plus(TriggerCount.new(int(relic.carry))).minus_one().div_small(4)
+      extra=extra.times(int(roundf(boost*2))).div_small(2)
+      var expanded = repeats.plus(extra)
+      if not extra.digits.is_empty(): factor=expanded.number().div(repeats.number())
+      repeats=expanded
+      relic.carry=repeats.plus(TriggerCount.new(int(relic.carry))).mod_small(5)
      "resonance":
-      var rate: float = 1.12*boost
-      var value_sum = Num.power(rate,chain_pos+1).times(Num.power(rate,repeats).minus(1)).div(.12 if boost==1 else rate-1)
-      factor=value_sum.div(repeats)
-      chain_pos+=repeats
-     "singularity": value=Num.power(10,value.log10_value()*1.2*boost); fired.append(physical.id)
+      # Product of the growing bonuses, rather than their old average.
+      var n = repeats.number()
+      var exponent = n.times(chain_pos.number().plus(1)).plus(n.times(repeats.minus_one().number()).div(2))
+      factor=Num.power(1.12*boost,exponent)
+      if legacy_compat:
+       var rate: float = 1.12*boost
+       factor=Num.power(rate,chain_pos.number().plus(1)).times(Num.power(rate,n).minus(1)).div(rate-1).div(n)
+      chain_pos=chain_pos.plus(repeats)
+     "singularity":
+      operation="power"; operand=Num.of(1.2*boost)
+      value=value.raised(Num.power(1.2*boost,scoring_repeats.number()))
+      fired.append(physical.id)
     if factor!=null:
      if boost!=1 and id not in ["resonance","feedback","steelworks","domino"]: factor=Num.of(factor).times(boost)
-     value=value.times(factor)
+     var applied_factor = Num.of(factor) if id in ["resonance","feedback"] else Num.of(factor).raised(scoring_repeats.number())
+     if id not in ["resonance","feedback"]: operation="multiply"; operand=Num.of(factor)
+     value=value.times(applied_factor)
      fired.append(physical.id)
     if record and fired.size()>fired_before:
      var note: String = "x"+_factor_text(factor) if factor!=null else "+"+_factor_text(8*boost) if id=="carbon" else "+"+_factor_text(float(relic.charge)*boost) if id=="battery" else "^"+_factor_text(1.2*boost) if id=="singularity" else "+$"+income.minus(income_before).fmt()
      steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"index":event.index,"value":value,"text":note})
-     if repeats>repeats_before:
-      var extra: int = repeats-repeats_before
-      steps.append({"kind":"retrigger","id":physical.id,"slot":application.slot,"value":value,"text":"+%d %s" % [extra,"trigger" if extra==1 else "triggers"]})
+     steps[-1].operation=operation
+     steps[-1].operand=operand
+     steps[-1].before=value_before
+     steps[-1].activations=repeats_before.scalar()
+     steps[-1].activation_text=repeats_before.text()
+     if repeats.number().cmp(repeats_before.number())>0:
+      steps.append({"kind":"retrigger","id":physical.id,"slot":application.slot,"value":value,"activations":repeats.scalar(),"activation_text":repeats.text(),"text":repeats.text()+" triggers"})
    if eligible:
     points=points.plus(value)
-    event_triggers+=repeats
+    event_triggers=event_triggers.plus(repeats)
   if gate==2 and guardian().id=="quiet": points=points.times(.75)
   points=points.floored()
   full=full.plus(points)
   if record: steps.append({"kind":"bank","index":event.index,"value":points,"subtotal":full,"text":"Blocked by guardian" if not eligible else "Guardian x0.75" if gate==2 and guardian().id=="quiet" else "Merge scored"})
-  trigger_count+=event_triggers
-  entries.append({"e":t.e,"index":event.index,"points":points,"triggers":event_triggers,"muted":not eligible})
+  trigger_count=trigger_count.plus(event_triggers)
+  entries.append({"e":t.e,"index":event.index,"points":points,"triggers":event_triggers.scalar(),"muted":not eligible})
   if not legacy_compat:
    var cues: Array = Rules.on_merge(self,event,preview)
    if record:
@@ -390,7 +417,7 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
  var ordered_fired: Array = []
  for relic in relics:
   if fired.has(relic.id): ordered_fired.append(relic.id)
- return {"score":full,"triggers":trigger_count,"money":income,"entries":entries,"fired":ordered_fired,"steps":steps}
+ return {"score":full,"triggers":trigger_count.scalar(),"money":income,"entries":entries,"fired":ordered_fired,"steps":steps}
 
 static func _factor_text(value) -> String:
  var n = Num.of(value)
@@ -811,8 +838,8 @@ func snapshot() -> Dictionary:
 
 static func _valid_num(value) -> bool:
  if value is int or value is float: return is_finite(float(value)) and value>=0
- if value is not Dictionary or value.get("__num") is not Array or value.__num.size()!=2: return false
- return _finite(value.__num[0]) and _finite(value.__num[1]) and float(value.__num[0])>=0
+ if value is not Dictionary or value.get("__num") is not Array or value.__num.size() not in [2,3]: return false
+ return _finite(value.__num[0]) and _finite(value.__num[1]) and float(value.__num[0])>=0 and (value.__num.size()==2 or (_finite(value.__num[2]) and value.__num[2]>=0 and value.__num[2]==floorf(value.__num[2])))
 
 static func _finite(value) -> bool:
  return (value is int or value is float) and is_finite(float(value))
@@ -845,6 +872,7 @@ func restore(state) -> bool:
   if relic.get("abilities",[]) is not Array or relic.get("abilities",[]).size()>6: return false
   for ability in relic.get("abilities",[]):
    if ability is not Dictionary or ability.get("id") not in Rules.COPIABLE or not _valid_num(ability.get("growth")) or not _finite(ability.get("charge")) or not _finite(ability.get("carry")) or ability.get("edition","") not in ["","unbound","oversaturated"] or ability.get("cursed",false) is not bool: return false
+   if ability.get("echoed",false) is not bool or not _finite(ability.get("echo_passes",2)) or ability.get("echo_passes",2)<2: return false
   if relic.has("uid"):
    if not _finite(relic.uid) or relic.uid<1 or uids.has(relic.uid): return false
    uids.append(relic.uid)

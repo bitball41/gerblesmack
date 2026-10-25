@@ -187,7 +187,8 @@ func _build() -> void:
  board.size=Vector2(420,420)
  _receipt_heading=_text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
  _receipt_points=_text("+0",Rect2(1024,434,300,64),64,UIStyle.CREAM,true)
- _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,300,72),32,UIStyle.MUTED)
+ _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,340,108),27,UIStyle.MUTED,false,self,true)
+ _receipt_counts.add_theme_font_size_override("font_size",27)
  _rule_notice=_text("",Rect2(1024,590,340,60),27,UIStyle.GOLD,false,self,true)
  _rule_notice.add_theme_font_size_override("font_size",27)
  _target_note=_text("",Rect2(510,807,620,42),15,UIStyle.GOLD,false,self,true)
@@ -275,7 +276,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
   _receipt_points.text="+"+game.last_merge.fmt()
   _receipt_points.add_theme_color_override("font_color",UIStyle.CREAM)
   UIStyle.fit(_receipt_points,64,32)
-  _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
+  _receipt_counts.text="MERGES %d\nTRIGGERS %s" % [game.last_entries.size(),UIStyle.Num.of(game.last_triggers).fmt()]
   _receipt_counts.add_theme_color_override("font_color",UIStyle.MUTED)
  _seed.text=game.b().name.to_upper()+" BOARD / SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
@@ -287,7 +288,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _target_note.text=target_text
  board.targeting=not target_text.is_empty()
  _rule_notice.text=UIStyle.readable(str(game.f.notice))
- _rule_notice.visible=in_play and not _action.visible and not str(game.f.notice).is_empty()
+ _rule_notice.visible=in_play and not scoring and not _action.visible and not str(game.f.notice).is_empty()
  board.blocked_cell=int(game.f.block)
  board.queue_redraw()
  board.motion_enabled=motion_enabled
@@ -402,6 +403,7 @@ func begin_score_display(before) -> void:
  _receipt_heading.text="Scoring"
  _receipt_points.text="0"
  _receipt_counts.text=""
+ _rule_notice.hide()
 
 func show_score_step(step: Dictionary, before, target) -> void:
  if not scoring: return
@@ -415,7 +417,7 @@ func show_score_step(step: Dictionary, before, target) -> void:
  if step.has("id"):
   _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() else card_for(step.id)
   if is_instance_valid(_active_relic):
-   _active_relic.score_trigger(step.text,step.kind=="retrigger")
+   _active_relic.score_trigger(step.get("badge_text",step.text),step.kind=="retrigger")
   _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
  elif step.kind=="merge" and board.tiles.has(step.index):
   board.tiles[step.index].pop()
@@ -443,7 +445,7 @@ func _paint_score(value, target, animate: bool) -> void:
    _displayed_score=value.to_float() if value.e<12 else 0.0
   _last_score=score_text
  UIStyle.fit(_score_label,64,32)
- var ratio: float = clampf(pow(10,value.log10_value()-target.log10_value()),0,1) if value.m>0 else 0.0
+ var ratio: float = value.ratio_to(target)
  if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
  if animate:
   _progress_tween=create_tween()
