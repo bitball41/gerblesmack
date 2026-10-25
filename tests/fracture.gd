@@ -171,6 +171,7 @@ func run() -> void:
  trigger_checks()
  duplicate_checks()
  result_checks()
+ final_power_checks()
  print("Fracture model checks: ",assertions,"; failures: ",failures)
  quit(0 if failures==0 else 1)
 
@@ -339,3 +340,16 @@ func result_checks() -> void:
  check(g.f.curse==3 and g.target().cmp(played_target)==0,"Guardian result retains the target actually played")
  check(g.target(2).cmp(played_target)>0,"next attempt preview includes the new Curse")
  roundtrip(g,"Cursed completed target")
+
+func final_power_checks() -> void:
+ var g=game();only(g,["domino"]);g.relics[0].edition="oversaturated";plain(g)
+ g.cells[4]=g.tile(1);g.cells[5]=g.tile(1);g.cells[8]=g.tile(1);g.cells[9]=g.tile(1)
+ var slid=g.slide("left");g.cells=slid.board
+ var score=g.score_merges(slid.events,1)
+ check(score.entries[2].points.cmp(64)==0 and score.entries[2].triggers==16,"Oversaturated Domino doubles each earlier-merge factor")
+ g=game();only(g,["body_double"]);g.relics[0].edition="oversaturated";plain(g,2);g.cells[4]=g.tile(2)
+ var spell: String = ""
+ for id in Cat.SPELLS:
+  if Cat.SPELLS[id].action=="gold": spell=id
+ g.inventory=[spell]
+ check(spell!="" and g.use_item(0,0) and [0,1,4].all(func(i): return g.cells[i].fx.get("gold",false)),"Oversaturated Body Double affects two extra matching tiles")

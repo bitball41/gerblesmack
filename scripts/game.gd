@@ -337,8 +337,8 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
       if t.e>=10: factor=3; repeats*=maxi(1,int(3*boost))
      "domino":
       if ei==events.size()-1 and events.size()>1:
-       factor=pow(2,events.size()-1)
-       repeats*=maxi(1,int(factor*boost))
+       factor=pow(2*boost,events.size()-1)
+       repeats*=maxi(1,int(factor))
      "feedback":
       var extra: int = maxi(0,int(floorf((int(relic.carry)+repeats-1)/4.0)))
       if extra>0: factor=float(repeats+int(extra*boost))/repeats
@@ -351,7 +351,7 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
       chain_pos+=repeats
      "singularity": value=Num.power(10,value.log10_value()*1.2*boost); fired.append(physical.id)
     if factor!=null:
-     if boost!=1 and id not in ["resonance","feedback","steelworks"]: factor=Num.of(factor).times(boost)
+     if boost!=1 and id not in ["resonance","feedback","steelworks","domino"]: factor=Num.of(factor).times(boost)
      value=value.times(factor)
      fired.append(physical.id)
     if record and fired.size()>fired_before:
@@ -701,12 +701,14 @@ func use_item(index: int, cell: int = -1, dest: int = -1, source: String = "pock
   next_tile=roll_tile()
  elif not _apply_spell(id,cell,dest): return false
  if Cat.SPELLS.has(id) and cell>=0 and original_e>0 and has_relic("body_double") and int(f.gate.get("body_double",0))<int(ceil(Rules.amount(self,"body_double"))):
+  var applied := 0
   for target in range(16):
    if target==cell or cells[target]==null or int(cells[target].e)!=original_e: continue
    var empty: Array = Rules.free_cells(self)
    if _apply_spell(id,target,int(empty[0]) if not empty.is_empty() else -1):
-    f.gate.body_double=int(f.gate.get("body_double",0))+1
-    break
+    applied+=1
+    if applied>=int(ceil(Rules.amount(self,"body_double"))): break
+  if applied>0: f.gate.body_double=int(f.gate.get("body_double",0))+1
  var retain: bool = Cat.RUNES.has(id) and has_relic("spare_parts") and rng.randf()<minf(1,.2*Rules.amount(self,"spare_parts"))
  if not retain: Market.remove_item(self,index,source)
  if Cat.RUNES.has(id) or Cat.SPELLS.has(id):
