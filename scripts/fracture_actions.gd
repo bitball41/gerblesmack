@@ -7,8 +7,51 @@ const Market = preload("res://scripts/fracture_market.gd")
 static func valid_relic(game, index: int) -> bool:
  return index>=0 and index<game.relics.size()
 
+static func fracture_reason(game, id: String, target: int = -1) -> String:
+ if not Cat.FRACTURES.has(id): return "Unknown Fracture."
+ if game.phase not in ["play","shop"]: return "Use Fractures during play or in the shop."
+ var type: String = Cat.FRACTURES[id].target
+ if type=="relic" and not valid_relic(game,target): return "Choose an eligible relic."
+ if type=="tile" and (target<0 or target>=16 or game.cells[target]==null): return "Choose an occupied tile."
+ var selected: Dictionary = game.relics[target] if type=="relic" else {}
+ var tiles: Array = Rules.occupied(game)
+ match id:
+  "liberation":
+   if selected.get("edition","")=="unbound": return "This relic is already Unbound."
+  "overexposure":
+   if selected.get("edition","")=="oversaturated": return "This relic is already Oversaturated."
+   if game.max_hp<=1 or game.board_id=="eclipse": return "Requires at least 2 maximum Life."
+   if selected.get("edition","")=="unbound" and Rules.bound_count(game)>=game.max_relics(): return "Make room for this relic's normal slot first."
+  "erosion":
+   if game.relics.is_empty(): return "Requires an owned relic."
+  "rebirth":
+   if game._eligible_relics().filter(func(item): return Cat.RELICS[item].rarity==Cat.RELICS[selected.id].rarity and item!=selected.id).is_empty(): return "No same-rarity replacement is available."
+  "schism":
+   if game.relics.size()<3: return "Requires at least 3 relics."
+  "transmutation":
+   var editions: Array = game.relics.map(func(r): return r.get("edition",""))
+   if editions.size()<2 or editions.all(func(e): return e==editions[0]): return "Requires at least two different editions to redistribute."
+  "genesis":
+   if tiles.size()<3 or Rules.free_cells(game).is_empty(): return "Requires at least 3 tiles and an empty cell."
+  "collapse":
+   if tiles.size()<=3 and tiles.all(func(i): return game.cells[i].seal): return "The remaining tiles are already sealed."
+  "transference":
+   if not tiles.any(func(i): return i!=target and (not game.cells[i].fx.is_empty() or game.cells[i].seal)): return "Another tile must hold an enhancement or seal."
+  "pandemonium":
+   if game.hp<=1: return "Requires at least 2 Life."
+   if tiles.is_empty(): return "Requires occupied tiles."
+  "monoculture":
+   if tiles.is_empty(): return "Requires occupied tiles."
+   if tiles.all(func(i): return game.cells[i].e==game.cells[tiles[0]].e and game.cells[i].fx.get("glass",false) and game.cells[i].seal): return "These tiles already form a Glass, sealed monoculture."
+  "liquidation":
+   if tiles.size()<4: return "Requires at least 4 tiles."
+  "sovereign":
+   if Rules.bound_count(game)>=game.max_relics(): return "Make room in your relic slots first."
+   if game._eligible_relics().filter(func(item): return Cat.RELICS[item].rarity=="Legendary").is_empty(): return "All Legendary relics are already owned."
+ return ""
+
 static func use_fracture(game, id: String, target: int = -1) -> bool:
- if not Cat.FRACTURES.has(id) or game.phase not in ["play","shop"]: return false
+ if not fracture_reason(game,id,target).is_empty(): return false
  var type: String = Cat.FRACTURES[id].target
  if type=="relic" and not valid_relic(game,target): return false
  if type=="tile" and (target<0 or target>=16 or game.cells[target]==null): return false
@@ -159,13 +202,14 @@ static func exchange_nomad(game, index: int) -> bool:
  return true
 
 static func rewind(game) -> bool:
- if not game.has_relic("paradox") or game.f.paradox_used or game.f.rewind.is_empty(): return false
+ if not Rules.can_rewind(game): return false
+ var used: int = int(game.f.paradox_used)
  var state = JSON.parse_string(str(game.f.rewind.get("json","")))
  if state is not Dictionary: return false
  var rng_after: int = game.rng.state
  if not game.restore(state): return false
  game.f.rewind={}
- game.f.paradox_used=true
+ game.f.paradox_used=used+1
  game.rng.state=rng_after
  game.next_tile=game.roll_tile()
  game.f.notice="Paradox / swipe rewound"
@@ -209,7 +253,7 @@ static func workshop(game, action: String, index: int = -1, other: int = -1, cho
    game.f.pending.guillotine-=1
   "devour":
    if int(game.f.pending.get("devourer",0))<=0 or not valid_relic(game,index) or game.relics[index].id not in Rules.COPIABLE: return false
-   var consumers: Array = game.relics.filter(func(r): return r.id=="devourer" and r.get("abilities",[]).size()<2)
+   var consumers: Array = game.relics.filter(func(r): return r.id=="devourer" and r.get("abilities",[]).size()<int(ceil(2*Rules.power(r))))
    if consumers.is_empty(): return false
    var relic: Dictionary = consumers[0]
    if not relic.has("abilities"): relic.abilities=[]
@@ -219,6 +263,7 @@ static func workshop(game, action: String, index: int = -1, other: int = -1, cho
   "echo":
    if int(game.f.pending.get("crown_echoes",0))<=0 or not valid_relic(game,index) or game.relics[index].get("echoed",false) or game.relics[index].id not in Rules.SCORING: return false
    game.relics[index].echoed=true
+   game.relics[index].echo_passes=maxi(2,int(ceil(2*Rules.amount(game,"crown_echoes"))))
    game.f.pending.crown_echoes-=1
   "duplicate":
    if int(game.f.pending.get("satchel",0))<=0 or index<0 or index>=game.inventory.size(): return false
@@ -227,6 +272,7 @@ static func workshop(game, action: String, index: int = -1, other: int = -1, cho
   "chrysalis":
    if not game.has_relic("chrysalis") or index<0 or index>=16 or game.cells[index]==null or not game.cells[index].fx.is_empty() or game.cells[index].seal or game.cells[index].has("chrysalis"): return false
    game.cells[index].chrysalis=0
+   game.cells[index].chrysalis_goal=maxi(1,int(ceil(3/Rules.amount(game,"chrysalis"))))
   "fusion_spell","fusion_rune","fusion_double":
    var req: String = "fusion1" if action=="fusion_spell" else "fusion2" if action=="fusion_rune" else "fusion3"
    if not game.has_upgrade(req) or index==other or index<0 or other<0 or index>=game.inventory.size() or other>=game.inventory.size(): return false

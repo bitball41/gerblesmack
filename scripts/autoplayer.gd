@@ -1,6 +1,7 @@
 extends RefCounted
 ## Lookahead uses visible information and its own sampler; it never consumes run RNG.
 const Num = preload("res://scripts/num.gd")
+const Rules = preload("res://scripts/fracture_rules.gd")
 const RunRng = preload("res://scripts/run_rng.gd")
 const DIRECTIONS = ["down","left","right","up"]
 
@@ -16,7 +17,7 @@ class Sampler:
 static func _copy(g):
  var q = g.get_script().new()
  q.persist_enabled=false
- for key in ["legacy_compat","board_id","floor_num","gate","moves","gate_swipes","last_dir","rune_uses","phase","jammed"]: q.set(key,g.get(key))
+ for key in ["legacy_compat","swipes","board_id","floor_num","gate","moves","gate_swipes","last_dir","rune_uses","phase","jammed"]: q.set(key,g.get(key))
  q.f=g.f.duplicate(true)
  q.rng.state=g.rng.state
  q.rune_levels=g.rune_levels
@@ -50,7 +51,7 @@ static func evaluate(g, anchor: int) -> float:
  var max_e: int = raw.max()
  var scale: float = 16.0/maxf(16,max_e)
  var values: Array = raw.map(func(value): return value*scale)
- var empty: int = raw.count(0)
+ var empty: int = raw.count(0)-(1 if int(g.f.block)>=0 else 0)
  var smooth := 0.0
  var mono := 0.0
  var pairs := 0
@@ -85,6 +86,7 @@ static func preview(g, direction: String, anchor: int) -> Dictionary:
  if not slid.changed: return {}
  var q = _copy(g)
  q.cells=slid.board
+ q.swipes=g.swipes+1
  q.gate_swipes=g.gate_swipes+1
  q.last_dir=direction
  var cost := 1
@@ -94,6 +96,7 @@ static func preview(g, direction: String, anchor: int) -> Dictionary:
  q.moves=maxi(0,g.moves-cost)
  var scored: Dictionary = q.score_merges(slid.events,g.highest(),true)
  q.score=g.score.plus(scored.score)
+ if not q.legacy_compat: Rules.after_move(q,slid.events)
  var target = g.target()
  var shape: float = evaluate(q,anchor)
  var terminal = 1000000+shape if q.score.cmp(target)>=0 else -1000000+shape if q.moves<=0 else null
@@ -113,10 +116,10 @@ static func _moves(g, anchor: int) -> Array:
  _sort(moves,"value")
  return moves
 
-static func _spaces(board: Array) -> Array:
+static func _spaces(board: Array, block: int = -1) -> Array:
  var empty: Array = []
  for index in range(16):
-  if board[index]==null: empty.append(index)
+  if board[index]==null and index!=block: empty.append(index)
  return empty
 
 static func _place(g, index: int, value: Dictionary):
@@ -126,7 +129,7 @@ static func _place(g, index: int, value: Dictionary):
 
 static func expected(step: Dictionary, anchor: int) -> float:
  if step.terminal!=null: return float(step.terminal)
- var empty: Array = _spaces(step.g.cells)
+ var empty: Array = _spaces(step.g.cells,int(step.g.f.block))
  if empty.is_empty(): return -1000000
  var total := 0.0
  var worst := INF
@@ -140,15 +143,19 @@ static func expected(step: Dictionary, anchor: int) -> float:
 
 static func _sample_tile(g, sampler: Sampler) -> Dictionary:
  var exponent: int = g.spawn_min()+int(sampler.randf()<(.10+.35*(int(g.rune_levels.spawn)%2)))
- if g.has_relic("alchemy") and sampler.randf()<.25: exponent+=1
+ if g.has_relic("alchemy") and sampler.randf()<minf(1,.25*Rules.amount(g,"alchemy")): exponent+=int(ceil(Rules.amount(g,"alchemy")))
  var fx := {}
  for key in ["gold","glass","steel"]:
-  if sampler.randf()<1.0-pow(.92,g.rune_levels[key]): fx[key]=true
+  var chance: float = 1.0-pow(.92,g.rune_levels[key])
+  if g.board_id=="glasshouse" and key=="glass": chance=maxf(chance,.5)
+  if g.board_id=="eclipse" and key==("gold" if (g.floor_num*3+g.gate)%2==1 else "glass"): chance=1
+  if sampler.randf()<chance: fx[key]=true
  return g.tile(exponent,fx,sampler.randf()<1.0-pow(.94,g.rune_levels.seal))
 
 static func _shatter(q, events: Array, sampler: Sampler) -> void:
  for event in events:
-  if event.tile.fx.get("glass",false) and sampler.randf()<.25 and q.cells[event.index]==event.tile: q.cells[event.index]=null
+  if event.tile.fx.get("glass",false) and sampler.randf()<float(q.b().get("shatter_chance",.25)) and q.cells[event.index]==event.tile:
+   if not Rules.prevent_shatter(q,event.tile): q.cells[event.index]=null
 
 static func rollout(step: Dictionary, anchor: int, seed_value: int, explore: bool) -> float:
  var sampler := Sampler.new(seed_value)
@@ -156,7 +163,7 @@ static func rollout(step: Dictionary, anchor: int, seed_value: int, explore: boo
  var value: float = step.reward
  _shatter(q,step.events,sampler)
  for depth in range(1,6):
-  var empty: Array = _spaces(q.cells)
+  var empty: Array = _spaces(q.cells,int(q.f.block))
   if empty.is_empty(): return value-1000000*pow(.96,depth)
   q=_place(q,empty[int(floorf(sampler.randf()*empty.size()))],q.next_tile)
   q.next_tile=_sample_tile(q,sampler)

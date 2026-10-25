@@ -41,7 +41,8 @@ static func pocket_entries(host, predicate: Callable) -> Array:
  return entries
 
 static func picker(host, title: String, detail: String, entries: Array, callback: Callable, label: String = "Choose", can_close: bool = true) -> void:
- var col: VBoxContainer = host._open(title,"choice",Vector2(1000,740),can_close)
+ var height: int = 580 if entries.size()<=4 else 740
+ var col: VBoxContainer = host._open(title,"choice",Vector2(1000,height),can_close)
  col.add_child(note(detail))
  var grid := GridContainer.new()
  grid.columns=4
@@ -136,15 +137,11 @@ static func fracture_target(host, pocket_index: int, source: String) -> void:
  if not Cat.FRACTURES.has(id): return
  var definition: Dictionary = Cat.FRACTURES[id]
  if definition.target=="relic":
-  choose_owned(host,definition.name,definition.desc,func(relic,index):
-   if id=="liberation": return relic.get("edition","")!="unbound"
-   if id=="overexposure": return relic.get("edition","")!="oversaturated" and host.g.max_hp>1 and host.g.board_id!="eclipse" and (relic.get("edition","")!="unbound" or Rules.bound_count(host.g)<host.g.max_relics())
-   if id=="schism": return host.g.relics.size()>=3
-   if id=="rebirth": return not host.g._eligible_relics().filter(func(candidate): return Cat.RELICS[candidate].rarity==Cat.RELICS[relic.id].rarity).is_empty()
-   return true
+  choose_owned(host,definition.name,definition.desc,func(_relic,index):
+   return Actions.fracture_reason(host.g,id,index).is_empty()
   ,func(index): host._use_fracture(pocket_index,index,source),"Transform")
  elif definition.target=="tile":
-  tile_picker(host,definition.name,definition.desc,func(index): return host.g.cells[index]!=null,func(index): host._use_fracture(pocket_index,index,source))
+  tile_picker(host,definition.name,definition.desc,func(index): return Actions.fracture_reason(host.g,id,index).is_empty(),func(index): host._use_fracture(pocket_index,index,source))
  else: host._use_fracture(pocket_index,-1,source)
 
 static func fusion(host, mode: String, first: int = -1) -> void:
@@ -175,7 +172,7 @@ static func workshop(host) -> void:
  var col: VBoxContainer = host._open("WORKSHOP","workshop",Vector2(1040,760))
  col.add_child(note("Relic abilities, permanent upgrades, and stored cards."))
  if g.has_relic("paradox"):
-  row(host,col,"Paradox","Rewind the last valid swipe. Board, points, money, moves, and relic state return; the spawn is rerolled.","Rewind",func(): host._workshop_commit("rewind"),not g.f.paradox_used and not g.f.rewind.is_empty())
+  row(host,col,"Paradox","Rewind the last valid swipe. Board, points, money, moves, and relic state return; the spawn is rerolled.","Rewind",func(): host._workshop_commit("rewind"),Rules.can_rewind(g))
  if g.has_relic("loan_shark"):
   var limit: int = int(50*Rules.amount(g,"loan_shark"))
   row(host,col,"Loan Shark","Borrow once per floor. Guardian repayment is 150%; an unpaid loan costs one Life.","Borrow $%d" % limit,func(): host._workshop_commit("borrow",-1,-1,"",limit),g.phase in ["shop","gates","reward"] and not g.f.floor.get("loan",false))
@@ -183,7 +180,7 @@ static func workshop(host) -> void:
    var due = UIStyle.Num.of(g.f.debt).times(1.5)
    row(host,col,"Repay the loan","Settle your full debt before the Guardian.","Repay $"+due.fmt(),func(): host._workshop_commit("repay"),g.money.cmp(due)>=0)
  if g.has_relic("risky_investment"):
-  row(host,col,"Risky Investment","Before a Guardian, deposit half your balance. A win returns triple; a failure loses it.","Invest $"+g.money.div(2).floored().fmt(),func(): host._workshop_commit("invest"),g.phase=="gates" and g.gate==2 and num_value(g.f.investment)==0 and g.money.cmp(2)>=0)
+  row(host,col,"Risky Investment","Before a Guardian, deposit half your balance. A win returns x%s; a failure loses it." % Rules.number(3*Rules.amount(g,"risky_investment")),"Invest $"+g.money.div(2).floored().fmt(),func(): host._workshop_commit("invest"),g.phase=="gates" and g.gate==2 and num_value(g.f.investment)==0 and g.money.cmp(2)>=0)
  if g.has_upgrade("wagers1"):
   var limit: int = 30 if g.has_upgrade("wagers2") else 10
   for stake in [5,10,30]:
@@ -193,11 +190,11 @@ static func workshop(host) -> void:
  if g.has_relic("guillotine"):
   row(host,col,"Guillotine","Sacrifice the highest tile after a Guardian victory. Current multiplier grows by x1.8.","Offer tile",func(): host._workshop_commit("guillotine"),int(g.f.pending.get("guillotine",0))>0 and g.filled()>0)
  if g.has_relic("devourer"):
-  row(host,col,"Devourer","Sacrifice another scoring relic and inherit its ability. Up to two abilities.","Choose relic",func(): choose_owned(host,"Feed Devourer","The selected relic is destroyed; its scoring ability is inherited.",func(relic,index): return relic.id in Rules.COPIABLE,func(index): host._workshop_commit("devour",index),"Sacrifice"),int(g.f.pending.get("devourer",0))>0 and g.relics.any(func(r): return r.id=="devourer" and r.get("abilities",[]).size()<2))
+  row(host,col,"Devourer","Sacrifice another scoring relic and inherit its ability. Capacity scales with this relic's power.","Choose relic",func(): choose_owned(host,"Feed Devourer","The selected relic is destroyed; its scoring ability is inherited.",func(relic,index): return relic.id in Rules.COPIABLE,func(index): host._workshop_commit("devour",index),"Sacrifice"),int(g.f.pending.get("devourer",0))>0 and g.relics.any(func(r): return r.id=="devourer" and r.get("abilities",[]).size()<int(ceil(2*Rules.power(r)))))
  if g.has_relic("crown_echoes"):
   row(host,col,"Crown of Echoes","After a Guardian victory, permanently double a relic's scoring activations. Growth and payouts still occur once.","Choose relic",func(): choose_owned(host,"Crown of Echoes","Permanently Echo one eligible relic.",func(relic,index): return relic.id in Rules.SCORING and not relic.get("echoed",false),func(index): host._workshop_commit("echo",index),"Echo"),int(g.f.pending.get("crown_echoes",0))>0)
  if g.has_relic("chrysalis"):
-  row(host,col,"Chrysalis","Mark a plain tile. Three merges later it gains Gold, Glass, Steel, and a seal.","Choose tile",func(): tile_picker(host,"Chrysalis","Choose a plain, unsealed tile to mark.",func(index): return g.cells[index]!=null and g.cells[index].fx.is_empty() and not g.cells[index].seal and not g.cells[index].has("chrysalis"),func(index): host._workshop_commit("chrysalis",index)),true)
+  row(host,col,"Chrysalis","Mark a plain tile. After %d merges it gains Gold, Glass, Steel, and a seal." % maxi(1,int(ceil(3/Rules.amount(g,"chrysalis")))),"Choose tile",func(): tile_picker(host,"Chrysalis","Choose a plain, unsealed tile to mark.",func(index): return g.cells[index]!=null and g.cells[index].fx.is_empty() and not g.cells[index].seal and not g.cells[index].has("chrysalis"),func(index): host._workshop_commit("chrysalis",index)),true)
  if g.f.nomad_trade and g.phase=="gates":
   row(host,col,"Nomad exchange","At the start of this floor, exchange one relic for another of the same rarity. Its edition is kept.","Choose relic",func(): choose_owned(host,"Nomad exchange","Choose a relic to exchange. The replacement is random within its rarity.",func(relic,index): return not g._eligible_relics().filter(func(id): return Cat.RELICS[id].rarity==Cat.RELICS[relic.id].rarity).is_empty(),func(index):
    if Actions.exchange_nomad(g,index): host._workshop_changed()

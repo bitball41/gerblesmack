@@ -167,5 +167,86 @@ func run() -> void:
  roundtrip(g,"financial contracts")
  g=game();var safe: String=g.export_run();var bad:Dictionary=g.snapshot();bad.f.curse=-2
  check(not g.restore(bad) and g.export_run()==safe,"invalid expansion save cannot mutate the live run")
+ edge_checks()
  print("Fracture model checks: ",assertions,"; failures: ",failures)
  quit(0 if failures==0 else 1)
+
+func edge_checks() -> void:
+ var g=game()
+ # Production Fracture mode must preserve original scoring as well as frozen legacy mode.
+ for id in Cat.BASE_RELICS:
+  for direction in ["left","right","up","down"]:
+   g=game();only(g,[id]);plain(g,4);g.floor_num=1
+   g.relics[0].charge=24.0;g.relics[0].carry=3
+   g.cells[0].fx.steel=true;g.cells[1].seal=true;g.cells[4]=g.tile(3);g.cells[5]=g.tile(3)
+   var old=Game.new();old.persist_enabled=false;old.legacy_compat=true
+   check(old.restore(g.snapshot()),"baseline parity state "+id)
+   var a=g.slide(direction);var b=old.slide(direction)
+   g.cells=a.board;old.cells=b.board
+   var actual=g.score_merges(a.events,4);var expected=old.score_merges(b.events,4)
+   check(actual.score.cmp(expected.score)==0 and actual.money.cmp(expected.money)==0 and g.rng.state==old.rng.state and Game.encode(g.relics)==Game.encode(old.relics),"production retains original effect "+id+" "+direction)
+ for board in Cat.BASE_BOARDS:
+  check(Cat.board(board.id)==board,"original board statistics preserved "+board.id)
+ for pending in [false,true]:
+  g=game();g.phase="shop";g.shop_offers=["carbon","echo","venus","mercy"];g.shop_pack_bought=pending
+  g.pack_choices=["monolith","mars","hourglass"] if pending else []
+  var state: Dictionary = g.snapshot();state.version=2;state.erase("f")
+  var restored=game()
+  check(restored.restore(state) and restored.shop_offers==g.shop_offers and restored.pack_choices==g.pack_choices and restored.f.pack_offers.size()==2,"version-two shop migration preserves choices")
+  check(not pending or(restored.f.pack_offers[0].bought and restored.f.pack_remaining==1),"pending old pack is already paid")
+  roundtrip(restored,"migrated shop")
+ g=game();plain(g)
+ for id in ["genesis","transference","collapse","monoculture"]:
+  if id=="collapse" or id=="monoculture":
+   for tile in g.cells:
+    if tile!=null: tile.seal=true;tile.fx.glass=true
+  g.inventory=[id]
+  var before: String = g.export_run()
+  check(not g.use_item(0,0) and g.export_run()==before,"no-op Fracture retains card and RNG "+id)
+ g=game();only(g,["paradox"]);g.relics[0].edition="oversaturated";plain(g)
+ for index in range(2):
+  check(g.move("left") and Actions.rewind(g),"Oversaturated Paradox grants rewind "+str(index+1))
+ check(not Actions.rewind(g),"Paradox quota cannot be reset by its own snapshot")
+ roundtrip(g,"spent multiple rewinds")
+ g=game();only(g,["steelworks"]);g.relics[0].edition="oversaturated";plain(g);g.cells[4]=g.tile(3,{"steel":true});g.cells[5]=g.tile(4,{"steel":true})
+ check(is_equal_approx(Rules.current_factor(g,g.relics[0]).to_float(),5.76),"Oversaturated Steelworks doubles each printed per-Steel factor")
+ g=game();only(g,["risky_investment"]);g.relics[0].edition="oversaturated";g.f.investment=Num.new(10);g.money=Num.new();g.gate=2
+ Rules.after_result(g,true)
+ check(g.money.cmp(60)==0,"Oversaturated investment pays six times principal")
+ g=game();only(g,["shipping_crate"]);g.relics[0].edition="oversaturated";g.inventory=[];plain(g);g.cells[4]=g.tile(2);g.cells[5]=g.tile(3);g.cells[6]=g.tile(4)
+ Rules.after_arrival(g)
+ check(g.inventory.size()==2 and g.inventory.all(func(id): return Cat.SPELLS.has(id)),"Oversaturated Shipping Crate supplies two Spells")
+ g=game();only(g,["crown_echoes"]);g.relics[0].edition="oversaturated";g.gate=2;g.cleared=3
+ Rules.after_result(g,true)
+ check(g.f.pending.crown_echoes==2,"Oversaturated Crown earns two permanent Echo choices")
+ g=game();only(g,["devourer"]);g.relics[0].edition="oversaturated";g.f.pending.devourer=4;g.f.extra_slots=4
+ for id in ["carbon","echo","corner","odd"]: g._grant(id)
+ g.phase="shop"
+ for index in range(4): check(g.workshop_action("devour",1),"Oversaturated Devourer capacity "+str(index+1))
+ check(g.relics[0].abilities.size()==4,"Devourer retains four distinct inherited effects")
+ roundtrip(g,"expanded Devourer")
+ g=game();only(g,["stowaway"]);g.relics[0].edition="oversaturated";g.phase="shop";g.shop_offers=["carbon","echo","venus","mars"]
+ check(Market.stow_offer(g,"carbon") and Market.stow_offer(g,"echo"),"Oversaturated Stowaway accepts two offers")
+ g.shop_offers=["corner","odd","mercy","mars"];Market.tag_offers(g)
+ check(g.shop_offers.has("carbon") and g.shop_offers.has("echo"),"both carried offers survive reroll")
+ roundtrip(g,"multiple carried offers")
+ g=game();only(g,["pandora"]);g.relics[0].edition="oversaturated";g.f.extra_slots=5;g.phase="shop";g.money=Num.new(100);g.f.pack_offers=[{"type":"standard","size":"Standard","bought":false}]
+ var count: int = g.relics.size()+g.inventory.size()
+ check(g.pack_open(0) and g.pack_choose(g.pack_choices[0]) and g.relics.size()+g.inventory.size()==count+3,"Oversaturated Pandora gives two additional random rewards")
+ g=game("labyrinth")
+ var safe: String = g.export_run()
+ for field in ["last_used","paradox_used","rewind","item_tags"]:
+  var malformed: Dictionary = g.snapshot()
+  if field=="last_used": malformed.f[field]=42
+  elif field=="paradox_used": malformed.f[field]=-1
+  elif field=="rewind": malformed.f[field]={"json":42}
+  else: malformed.f[field]={"0":{"double":42}}
+  check(not g.restore(malformed) and g.export_run()==safe,"malformed expansion fields reject atomically "+field)
+ var sampler=preload("res://scripts/autoplayer.gd")
+ check(not sampler._spaces(g.cells,int(g.f.block)).has(int(g.f.block)),"autoplay never samples blocked Labyrinth space")
+ var prior: String = g.export_run()
+ check(sampler.choose(g)!="" and g.export_run()==prior,"Fracture autoplay is isolated from live state and RNG")
+ var legendaries := 0
+ for count_draw in range(10000):
+  if Cat.RELICS[Market.draw_item(g,Cat.RELICS.keys())].rarity=="Legendary": legendaries+=1
+ check(legendaries>50 and legendaries<160,"Reliquary Legendary generation remains about one percent")

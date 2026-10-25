@@ -1,6 +1,7 @@
 extends RefCounted
 const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
+const Rules = preload("res://scripts/fracture_rules.gd")
 
 static func tags_for(game, id: String) -> Dictionary:
  if game.f.pack_tags.has(id) and game.pack_choices.has(id): return game.f.pack_tags[id]
@@ -21,12 +22,15 @@ static func tag_offers(game) -> void:
   if Cat.RELICS.has(id): game.f.offer_tags[id]=old[id] if old.has(id) else roll_tags(game)
  var locked: String = game.f.locked_offer
  if locked!="" and not game.has_relic(locked) and not game.shop_offers.has(locked): game.shop_offers[0]=locked
- if not game.f.stowed.is_empty():
-  var id: String = game.f.stowed.id
-  if not game.has_relic(id):
-   if not game.shop_offers.has(id): game.shop_offers[0]=id
-   game.f.offer_tags[id]=game.f.stowed.get("tags",{})
-  else: game.f.stowed={}
+ if game.f.stowed.has("id"):
+  game.f.stowed={game.f.stowed.id:game.f.stowed.get("tags",{})}
+ var carried: Dictionary = game.f.stowed.duplicate(true)
+ for id in carried:
+  if game.has_relic(id): game.f.stowed.erase(id)
+  else:
+   if not game.shop_offers.has(id): game.shop_offers.append(id)
+   game.f.offer_tags[id]=carried[id]
+
  if locked!="" and Cat.RELICS.has(locked): game.f.offer_tags[locked]=old.get(locked,{})
 
 static func make_packs(game) -> void:
@@ -55,6 +59,16 @@ static func draw_fracture(game, choices: Array) -> String:
  var normal: Array = choices.filter(func(id): return id!="sovereign")
  return str(game.rng.pick(normal if not normal.is_empty() else choices))
 
+static func draw_item(game, choices: Array) -> String:
+ var relics: Array = choices.filter(func(id): return Cat.RELICS.has(id))
+ var consumables: Array = choices.filter(func(id): return not Cat.RELICS.has(id))
+ if relics.is_empty(): return str(game.rng.pick(consumables))
+ if not consumables.is_empty() and game.rng.randf()>=float(relics.size())/choices.size(): return str(game.rng.pick(consumables))
+ var roll: float = game.rng.randf()
+ var rarity: String = "Legendary" if roll<.01 else "Rare" if roll<.13 else "Uncommon" if roll<.45 else "Common"
+ var eligible: Array = relics.filter(func(id): return Cat.RELICS[id].rarity==rarity)
+ return str(game.rng.pick(eligible if not eligible.is_empty() else relics))
+
 static func open_pack(game, slot: int = 0) -> bool:
  if game.phase!="shop" or not game.pack_choices.is_empty() or slot<0 or slot>=game.f.pack_offers.size(): return false
  var offer: Dictionary = game.f.pack_offers[slot]
@@ -71,13 +85,13 @@ static func open_pack(game, slot: int = 0) -> bool:
  game.pack_choices=[]
  var count: int = 3 if offer.size=="Standard" else 5
  while game.pack_choices.size()<count and not available.is_empty():
-  var id: String = draw_fracture(game,available) if offer.type=="fracture" else str(game.rng.pick(available))
+  var id: String = draw_fracture(game,available) if offer.type=="fracture" else draw_item(game,available)
   game.pack_choices.append(id)
   available.erase(id)
   if Cat.RELICS.has(id): game.f.pack_tags[id]=roll_tags(game)
  if game.has_relic("pandora") and offer.type=="standard" and not game.f.floor.get("pandora",false):
   game.f.floor.pandora=true
-  game.f.floor.pandora_bonus=true
+  game.f.floor.pandora_bonus=int(ceil(Rules.amount(game,"pandora")))
  game.save_run()
  return true
 
@@ -87,11 +101,12 @@ static func choose_pack(game, id: String) -> bool:
  game.f.pack_remaining=maxi(0,int(game.f.pack_remaining)-1)
  if game.f.pack_remaining==0 or game.pack_choices.is_empty():
   game.pack_choices=[]
-  if game.f.floor.get("pandora_bonus",false):
-   game.f.floor.pandora_bonus=false
+  var bonus_count: int = int(game.f.floor.get("pandora_bonus",0))
+  game.f.floor.pandora_bonus=0
+  for count in range(bonus_count):
    var available: Array = pool(game,"standard").filter(func(item): return game.can_grant(item))
    if not available.is_empty():
-    var bonus: String = game.rng.pick(available)
+    var bonus: String = draw_item(game,available)
     game._grant(bonus,roll_tags(game) if Cat.RELICS.has(bonus) else {})
     game.f.notice="Pandora's Box / "+Cat.name_for(bonus)
  game.save_run()
@@ -152,7 +167,12 @@ static func lock_offer(game, id: String) -> bool:
 
 static func stow_offer(game, id: String) -> bool:
  if game.phase!="shop" or not game.has_relic("stowaway") or not game.shop_offers.has(id): return false
- game.f.stowed={"id":id,"tags":tags_for(game,id).duplicate(true)}
+ if game.f.stowed.has("id"): game.f.stowed={game.f.stowed.id:game.f.stowed.get("tags",{})}
+ if game.f.stowed.has(id): game.f.stowed.erase(id)
+ else:
+  var limit: int = maxi(1,int(ceil(Rules.amount(game,"stowaway"))))
+  if game.f.stowed.size()>=limit: game.f.stowed.erase(game.f.stowed.keys()[0])
+  game.f.stowed[id]=tags_for(game,id).duplicate(true)
  game.save_run()
  return true
 

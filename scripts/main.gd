@@ -1,6 +1,7 @@
 extends Control
 const FractureMenus = preload("res://ui/fracture_menus.gd")
 const UIStyle = preload("res://ui/skin.gd")
+const Rules = preload("res://scripts/fracture_rules.gd")
 const Game = preload("res://scripts/game.gd")
 const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
@@ -238,6 +239,7 @@ func _run_action(action: String) -> void:
   "board": _show_board()
   "workshop": _show_workshop()
   "upgrades": FractureMenus.show_upgrades(self)
+  "rack_page","pocket_page": _clear_context()
   "new": _show_new_run()
   "help": _show_help()
   "phase":
@@ -535,7 +537,7 @@ func _show_result() -> void:
   if int(summary.get("banked",0))>0: col.add_child(_paragraph("%d moves banked for the next gate." % summary.banked))
  if g.phase!="over": col.add_child(_button("CONTINUE ENDLESS  →" if ending else "GO TO SHOP  →",func(): g.open_shop(); _refresh_run(false); _show_shop(),Color("438c75"),Color("84bd9c"),25))
  else: col.add_child(_button("NEW RUN",_show_new_run,Color("cf8050"),Color("f6c991"),25))
- if g.has_relic("paradox") and not g.f.paradox_used and not g.f.rewind.is_empty(): col.add_child(_button("REWIND LAST SWIPE",func(): _workshop_commit("rewind"),Color("745884")))
+ if Rules.can_rewind(g): col.add_child(_button("REWIND LAST SWIPE",func(): _workshop_commit("rewind"),Color("745884")))
  col.add_child(_button("VIEW BOARD",func(): overlay.close()))
 
 func _show_shop() -> void:
@@ -1112,7 +1114,7 @@ func _workshop_changed() -> void:
 func _use_fracture(index: int, target: int, source: String = "pocket") -> void:
  var id: String = g.consumable_at(index,source)
  if not g.use_item(index,target,-1,source):
-  _toast("No valid transformation. Check the card's requirements.")
+  _toast(g.Actions.fracture_reason(g,id,target))
   return
  awaiting_spell=-1
  awaiting_source="pocket"

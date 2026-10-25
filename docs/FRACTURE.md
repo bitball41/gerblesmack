@@ -55,3 +55,12 @@ Frontend paths are connected: three numbered board pages (original 10 / existing
 Validation now includes 357 scene/UI checks, 126 expansion UI checks, 225 model checks, 51 gate-flow checks, 23 polish checks, and 28 scoring checks. The 2,057 frozen rule checks remain in CI. The new tests exercise UI callbacks, not only direct model operations. All current suites pass locally; browser visual review and final edge-case work remain pending.
 
 Remaining before release: browser screenshots and clicks at desktop/laptop sizes; old-save shop/pack migration; rarity/edition edge-case review; complete help/release notes; final production export/save-reload test; public deployment verification. Do not treat this branch checkpoint as a finished public release.
+
+
+## Implementation checkpoint 5
+
+Browser review repaired long board-thumbnail captions and excessive one-row modal height. Inventory pages retain full-size, separate relic and pocket cards, including Unbound overflow; scoring automatically follows an off-page actor. Compact meters respect their allocated width. Version 1/2 shop migration preserves offers and already-paid pending pack choices while adding the two new pack slots. Nonmutating Fracture preflight rejects unavailable/no-op transformations without consuming cards or RNG.
+
+Oversaturated/Cursed integer benefits round upward; requirements/costs are not increased. Per-Steel factors, Alchemy tiers, passive copy counts, shatter growth, investment payouts, phantom counts, rewind quotas, inherited capacity, Guardian choice counts and Echo pass counts honor effective power. Marked Chrysalis tiles retain their effective merge goal. Relic-only pack draws weight Legendary at 1%; other rarity tuning remains a documented implementation choice. Autoplay respects blocked cells, Vortex/Reactor/Handbrake physical changes, Glasshouse/Eclipse spawn rules, edition-enhanced Alchemy and Shatterproof.
+
+The Fracture model suite now has 467 checks, including production-mode old-relic parity, old-save migration, edition edge cases and malformed save protection. Final browser interaction checks and release deployment remain pending.

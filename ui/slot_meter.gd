@@ -9,7 +9,10 @@ func sync(count: int, limit: int) -> void:
  capacity=limit
  queue_redraw()
 func _draw() -> void:
- for index in range(capacity):
-  var rect := Rect2(index*16,0,10,12)
+ if capacity<=0: return
+ var shown: int = mini(capacity,12)
+ var stride: float = minf(16,(size.x-7)/maxi(1,shown-1))
+ for index in range(shown):
+  var rect := Rect2(roundf(index*stride),0,minf(10,maxf(3,stride-3)),12)
   if index<used: draw_rect(rect,UIStyle.CREAM)
-  else: draw_rect(rect,Color("79938d"),false,2)
+  else: draw_rect(rect,Color("79938d"),false,1)
