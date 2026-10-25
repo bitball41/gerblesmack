@@ -66,6 +66,8 @@ func _process(_delta: float) -> void:
  report.score_text=run_view._score_label.text
  report.receipt=run_view._receipt_points.text
  report.receipt_note=run_view._receipt_counts.text
+ report.receipt_note_rect=_bounds(run_view._receipt_counts)
+ report.receipt_note_min_height=run_view._receipt_counts.get_minimum_size().y
  report.scoring_cursor=scoring_sequence.cursor
  report.scoring_count=g.last_score_steps.size()
  report.triggers=Num.of(g.last_triggers).fmt()

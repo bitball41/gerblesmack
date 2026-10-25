@@ -64,7 +64,9 @@ func _compress(receipts: Array) -> Array:
   # its final authoritative subtotal without allocating per-trigger objects.
   if pending.size()>=stride or receipt.kind in ["merge","bank"]:
    var step: Dictionary = receipt.duplicate()
-   if pending.size()>1: step.text="%s / %d scoring steps" % [step.text,pending.size()]
+   if pending.size()>1:
+    step.text="%s / %d scoring steps" % [step.text,pending.size()]
+    if step.kind in ["relic","retrigger"]: step.badge_text="x"+Num.of(step.get("activations",1)).fmt()
    result.append(step)
    pending.clear()
  if not pending.is_empty(): result.append(pending[-1])

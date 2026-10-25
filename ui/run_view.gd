@@ -187,7 +187,8 @@ func _build() -> void:
  board.size=Vector2(420,420)
  _receipt_heading=_text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
  _receipt_points=_text("+0",Rect2(1024,434,300,64),64,UIStyle.CREAM,true)
- _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,300,72),32,UIStyle.MUTED)
+ _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,340,108),27,UIStyle.MUTED,false,self,true)
+ _receipt_counts.add_theme_font_size_override("font_size",27)
  _rule_notice=_text("",Rect2(1024,590,340,60),27,UIStyle.GOLD,false,self,true)
  _rule_notice.add_theme_font_size_override("font_size",27)
  _target_note=_text("",Rect2(510,807,620,42),15,UIStyle.GOLD,false,self,true)
@@ -287,7 +288,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _target_note.text=target_text
  board.targeting=not target_text.is_empty()
  _rule_notice.text=UIStyle.readable(str(game.f.notice))
- _rule_notice.visible=in_play and not _action.visible and not str(game.f.notice).is_empty()
+ _rule_notice.visible=in_play and not scoring and not _action.visible and not str(game.f.notice).is_empty()
  board.blocked_cell=int(game.f.block)
  board.queue_redraw()
  board.motion_enabled=motion_enabled
@@ -402,6 +403,7 @@ func begin_score_display(before) -> void:
  _receipt_heading.text="Scoring"
  _receipt_points.text="0"
  _receipt_counts.text=""
+ _rule_notice.hide()
 
 func show_score_step(step: Dictionary, before, target) -> void:
  if not scoring: return

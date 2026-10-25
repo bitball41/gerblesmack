@@ -20,6 +20,8 @@ const server=http.createServer((req,res)=>{let p=path.join(web,new URL(req.url,'
     await page.screenshot({path:path.join(output,'retriggers-active.png')});
     const active=await page.evaluate(()=>window.gatefoldQA);
     assert(active.scoring_queue<=112);assert(active.receipt&&!/NaN|Infinity/.test(active.receipt));
+    assert(active.receipt_note_rect[0]+active.receipt_note_rect[2]<=1440);
+    assert(active.receipt_note_min_height<=active.receipt_note_rect[3]);
    }
    await page.waitForFunction(()=>!window.gatefoldQA.moving&&!window.gatefoldQA.scoring,null,{timeout:5000});
    const result=await page.evaluate(()=>window.gatefoldQA);
