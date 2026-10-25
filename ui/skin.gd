@@ -19,7 +19,8 @@ static func box(bg: Color, edge: Color = Color("526571"), radius: int = 9, depth
  style.bg_color=bg
  style.border_color=edge
  style.set_border_width_all(2)
- style.set_corner_radius_all(0)
+ style.set_corner_radius_all(radius)
+ style.corner_detail=6
  style.anti_aliasing=false
  style.border_width_bottom=4 if depth>0 else 2
  style.shadow_color=Color("08151de6")
@@ -44,7 +45,7 @@ static func label(text: String, font_size: int = 16, color: Color = TEXT, displa
 static func panel(bg: Color = PANEL, edge: Color = Color("526571"), padding: int = 12) -> PanelContainer:
  var result := PanelContainer.new()
  result.mouse_filter=Control.MOUSE_FILTER_IGNORE
- result.add_theme_stylebox_override("panel",box(bg,edge,10,5,padding))
+ result.add_theme_stylebox_override("panel",box(bg,edge,14,5,padding))
  return result
 
 static func column(gap: int = 10) -> VBoxContainer:
@@ -188,14 +189,17 @@ static func summary(text: String, width: float, font_size: int, max_lines: int =
  if not line.is_empty(): lines.append(line)
  return "\n".join(lines)
 
-static func pixel_rect(canvas: CanvasItem, rect: Rect2, fill: Color, light: Color, unit: float = 2.0) -> void:
+static func pixel_rect(canvas: CanvasItem, rect: Rect2, fill: Color, light: Color, unit: float = 2.0, radius: int = 10) -> void:
  var r := Rect2(rect.position.snapped(Vector2(unit,unit)),rect.size.snapped(Vector2(unit,unit)))
- canvas.draw_rect(Rect2(r.position+Vector2(0,unit*2),r.size),Color("0b1721"))
- canvas.draw_rect(r,Color("172833"))
- canvas.draw_rect(r.grow(-unit),fill)
- canvas.draw_rect(Rect2(r.position+Vector2(unit,unit),Vector2(r.size.x-unit*2,unit)),light)
- canvas.draw_rect(Rect2(r.position+Vector2(unit,unit),Vector2(unit,r.size.y-unit*2)),light.darkened(.15))
- canvas.draw_rect(Rect2(r.position+Vector2(unit,r.size.y-unit*2),Vector2(r.size.x-unit*2,unit)),fill.darkened(.32))
+ var shadow: StyleBoxFlat = box(Color("0b1721"),Color("0b1721"),radius,0,0)
+ canvas.draw_style_box(shadow,Rect2(r.position+Vector2(0,unit*2),r.size))
+ var body: StyleBoxFlat = box(fill,light,radius,0,0)
+ body.set_border_width_all(int(unit))
+ body.border_width_bottom=int(unit*2)
+ canvas.draw_style_box(body,r)
+ # Highlights stop before the curve instead of drawing square corners over it.
+ canvas.draw_line(r.position+Vector2(radius,unit),r.position+Vector2(r.size.x-radius,unit),light.lightened(.1),unit)
+
 
 static func readable(text: String, arrows: bool = true) -> String:
  var result: String = text.replace("’","'").replace("…","...").replace("·","/").replace("−","-")

@@ -16,8 +16,7 @@ func _ready() -> void:
 func _draw() -> void:
  var active: bool = selected or has_focus() or is_hovered()
  if active:
-  draw_rect(Rect2(Vector2.ZERO,size),Color("2c4b50"))
-  draw_rect(Rect2(Vector2.ZERO,size),UIStyle.GOLD if selected else Color("7c9a9b"),false,2)
+  draw_style_box(UIStyle.box(Color("2c4b50"),UIStyle.GOLD if selected else Color("7c9a9b"),12,0,0),Rect2(Vector2.ZERO,size))
  if _portrait: draw_texture_rect(_portrait,Rect2((size.x-80)/2,10,80,100),false)
  var name_text: String = str(definition.get("name",board_id))
  var font_size := 27

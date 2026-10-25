@@ -10,7 +10,8 @@ INK='#1d2d35';PAPER='#f4e5bb';LIGHT='#fff4d2';GOLD='#d7a04c';SHADE='#a87942';TEA
 NAMES=['carbon','corner','echo','coins','fork','domino','feedback','monolith','battery','anvil','purse','mirror','match','stair','flask','plant','horizon','magnet','hand','mountain','wings','ticket','telescope','orbit']
 BACK=['#46605b','#876343','#496a85','#8a7440','#995747','#39666b','#7d5260','#4c4b66','#977440','#526860','#7c6948','#6a597d','#964e41','#4f6b54','#386e6b','#4b6c48','#8b634a','#8a4b43','#92723e','#466b83','#806745','#657046','#515e83','#6b466a']
 for name,bg in zip(NAMES,BACK):
- im=Image.new('RGBA',(64,64),bg);d=ImageDraw.Draw(im)
+ im=Image.new('RGBA',(64,64));d=ImageDraw.Draw(im)
+ d.rounded_rectangle((0,0,63,63),radius=6,fill=bg)
  r=lambda b,c,o=None:d.rectangle(b,fill=c,outline=o)
  p=lambda pts,c,o=None:d.polygon(pts,fill=c,outline=o)
  l=lambda pts,c,w=1:d.line(pts,fill=c,width=w)
@@ -20,7 +21,7 @@ for name,bg in zip(NAMES,BACK):
  def rim(b,c=PAPER):
   x,y,x2,y2=b;r(b,INK);r((x+2,y+2,x2-2,y2-2),c)
  # Quiet, repeatable print framing. Large clusters, no stochastic texture.
- r((3,3,60,60),None,PAPER);r((5,5,58,58),None,INK)
+ d.rounded_rectangle((3,3,60,60),radius=4,outline=PAPER);d.rounded_rectangle((5,5,58,58),radius=3,outline=INK)
  for x,y in [(7,7),(55,7),(7,55),(55,55)]:r((x,y,x+1,y+1),GOLD)
  if name=='carbon':
   p([(13,19),(43,13),(51,45),(21,52)],INK)
@@ -164,10 +165,10 @@ print('Wrote',len(NAMES),'editable 64px relic plates')
 boards=[('red','#bd554e','hourglass'),('yellow','#ca9b39','coins'),('blue','#3b729f','echo'),('robot','#71858e','auto'),('classic','#3d8073','gate'),('green','#4d8b62','flask'),('purple','#77569b','seal'),('orange','#c87b3c','battery'),('white','#d5d6be','heart'),('black','#3e3459','orbit'),('foundry','#43828b','anvil'),('bazaar','#af7b44','ticket'),('chronicle','#395e87','hourglass'),('archivist','#80638e','carbon'),('curio','#a25b75','pack')]
 for name,color,symbol in boards:
  im=Image.new('RGBA',(80,100));d=ImageDraw.Draw(im)
- d.rectangle((4,5,77,99),fill=INK)
- d.rectangle((1,1,74,95),fill=PAPER)
- d.rectangle((4,4,71,92),fill=INK)
- d.rectangle((6,6,69,90),fill=color)
+ d.rounded_rectangle((4,5,77,99),radius=7,fill=INK)
+ d.rounded_rectangle((1,1,74,95),radius=7,fill=PAPER)
+ d.rounded_rectangle((4,4,71,92),radius=5,fill=INK)
+ d.rounded_rectangle((6,6,69,90),radius=4,fill=color)
  plate=OUT/(symbol+'.png')
  if plate.is_file():im.alpha_composite(Image.open(plate),(6,17))
  else:

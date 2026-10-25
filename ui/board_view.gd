@@ -22,12 +22,12 @@ func _ready() -> void:
  _resized()
 
 func _draw() -> void:
- UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size),Color("152731"),Color("91a6a4"),3)
+ UIStyle.pixel_rect(self,Rect2(Vector2.ZERO,size),Color("152731"),Color("91a6a4"),3,18)
  var inner: Rect2 = _inner()
  var cell_size: Vector2 = _cell_size()
  for index in range(16):
   var position_in_grid: Vector2 = _cell_position(index)
-  var style: StyleBoxFlat = UIStyle.box(Color("2a414c"),Color("102632"),6,0,0)
+  var style: StyleBoxFlat = UIStyle.box(Color("2a414c"),Color("102632"),10,0,0)
   if targeting:
    style.border_color=UIStyle.GOLD if selected_cell==index else Color("7ba49e")
    style.bg_color=Color("35515a")

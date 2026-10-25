@@ -26,6 +26,7 @@ func run() -> void:
  chip=null
  ui.g.persist_enabled=false
  if ui.reduced_motion: ui._toggle_motion()
+ ui.auto_speed=1
  await process_frame
  check(ui.home_active and ui.home.visible,"opens on composed title screen")
  check(ui.home.find_children("*","Button",true,false).size()>=6,"title artwork and menu built")
@@ -65,7 +66,8 @@ func run() -> void:
  ui._request_move("left")
  ui._request_move("down")
  ui._request_move("right")
- await create_timer(.65).timeout
+ var input_deadline: int = Time.get_ticks_msec()+4500
+ while ui.moving and Time.get_ticks_msec()<input_deadline: await process_frame
  check(ui.g.swipes==3,"input buffers through slide animation")
  check(not ui.moving,"animation releases movement lock")
  check(ui.run_view.rack.get_instance_id()==rack_node and ui.run_view.board.get_instance_id()==board_node,"movement keeps persistent interface nodes")

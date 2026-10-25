@@ -26,10 +26,10 @@ func _ready() -> void:
  add_theme_font_size_override("font_size",UIStyle.pixel_font_size(display_size))
  for key in ["font_color","font_hover_color","font_pressed_color","font_focus_color"]: add_theme_color_override(key,text_color)
  add_theme_color_override("font_disabled_color",Color(text_color,0.4))
- add_theme_stylebox_override("normal",UIStyle.box(base_color,edge_color,8,5,padding))
- add_theme_stylebox_override("hover",UIStyle.box(base_color.lightened(.12),edge_color.lightened(.12),8,6,padding))
- add_theme_stylebox_override("pressed",UIStyle.box(base_color.darkened(.1),edge_color,8,1,padding))
- add_theme_stylebox_override("disabled",UIStyle.box(base_color.darkened(.3),edge_color.darkened(.4),8,3,padding))
+ add_theme_stylebox_override("normal",UIStyle.box(base_color,edge_color,12,5,padding))
+ add_theme_stylebox_override("hover",UIStyle.box(base_color.lightened(.12),edge_color.lightened(.12),12,6,padding))
+ add_theme_stylebox_override("pressed",UIStyle.box(base_color.darkened(.1),edge_color,12,1,padding))
+ add_theme_stylebox_override("disabled",UIStyle.box(base_color.darkened(.3),edge_color.darkened(.4),12,3,padding))
  var focus := UIStyle.box(Color.TRANSPARENT,UIStyle.GOLD,10,0,0)
  focus.draw_center=false
  focus.set_border_width_all(3)
@@ -56,8 +56,8 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
  if size.x<10 or size.y<10: return
  var light: Color = edge_color.lightened(.12) if is_hovered() and not disabled else edge_color
- draw_rect(Rect2(3,3,size.x-6,2),Color(light,.8))
- draw_rect(Rect2(3,size.y-6,size.x-6,3),Color(base_color.darkened(.45),.8))
+ draw_rect(Rect2(12,3,size.x-24,2),Color(light,.8))
+ draw_rect(Rect2(12,size.y-6,size.x-24,3),Color(base_color.darkened(.45),.8))
 
 func _entered() -> void:
  queue_redraw()

@@ -35,6 +35,8 @@ var last_merge = Num.new()
 var last_triggers := 0
 var last_entries: Array = []
 var fired_relics: Array = []
+# Ephemeral presentation receipts; never serialized or replayed into the rules.
+var last_score_steps: Array = []
 var shop_offers: Array = []
 var shop_upgrade := ""
 var floor_upgrade := ""
@@ -149,6 +151,7 @@ func new_run(id: String = "classic", run_seed: String = "") -> void:
  last_triggers = 0
  last_entries = []
  fired_relics = []
+ last_score_steps = []
  cleared = 0
  failed = 0
  swipes = 0
@@ -223,7 +226,9 @@ func earn(base):
  money = money.plus(value)
  return value
 
-func score_merges(events: Array, previous_highest: int, preview: bool = false) -> Dictionary:
+func score_merges(events: Array, previous_highest: int, preview: bool = false, capture_steps: bool = false) -> Dictionary:
+ var record: bool = capture_steps and not preview
+ var steps: Array = []
  var full = Num.new()
  var income = Num.new()
  var trigger_count := 0
@@ -243,28 +248,38 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false) -
    if relic.id=="battery":
     relic.charge+=12.0
     fired.append("battery")
-  return {"score":full,"triggers":0,"money":income,"entries":entries,"fired":fired}
+    if record: steps.append({"kind":"relic","id":"battery","value":full,"text":"+12 stored"})
+  return {"score":full,"triggers":0,"money":income,"entries":entries,"fired":fired,"steps":steps}
  for ei in range(events.size()):
   var event: Dictionary = events[ei]
   var t: Dictionary = event.tile
   var eligible: bool = not (gate==2 and guardian().id=="largest" and t.e!=max_e)
   if t.fx.get("gold",false):
    income=income.plus(earn(4 if has_relic("greed") else 2))
-   if has_relic("greed"): fired.append("greed")
+   if has_relic("greed"):
+    fired.append("greed")
+    if record: steps.append({"kind":"relic","id":"greed","value":Num.new(),"text":"+$%d Gold" % (8 if has_upgrade("trade3") else 4)})
   var points = Num.new()
   var event_triggers := 0
   for pass_index in range(2 if t.seal else 1):
    var value = Num.power(2,t.e).times(Num.power(1.25,steel_count)).times(2 if t.fx.get("glass",false) else 1)
    var repeats := 1
+   if record: steps.append({"kind":"merge","index":event.index,"value":value if eligible else Num.new(),"text":"Seal retrigger" if pass_index>0 else "Merge %d / %d" % [ei+1,events.size()]})
    for relic in relics:
     var id: String = relic.id
+    var fired_before: int = fired.size()
+    var repeats_before: int = repeats
+    var income_before = income
     if id=="business" and pass_index==0 and t.e<=3:
      income=income.plus(earn(1))
      fired.append(id)
     if id=="monolith" and pass_index==0 and t.e>=previous_highest:
      relic.growth=Num.of(relic.growth).times(1.15)
      fired.append(id)
-    if not eligible: continue
+    if not eligible:
+     if record and fired.size()>fired_before:
+      steps.append({"kind":"relic","id":id,"value":Num.new(),"text":"Growth x1.15" if id=="monolith" else "+$"+income.minus(income_before).fmt()})
+     continue
     var factor = null
     match id:
      "carbon": value=value.plus(8); fired.append(id)
@@ -309,12 +324,19 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false) -
     if factor!=null:
      value=value.times(factor)
      fired.append(id)
+    if record and fired.size()>fired_before:
+     var note: String = "x"+_factor_text(factor) if factor!=null else "+8" if id=="carbon" else "+"+_factor_text(battery_charge) if id=="battery" else "^1.2" if id=="singularity" else "+$"+income.minus(income_before).fmt()
+     steps.append({"kind":"relic","id":id,"index":event.index,"value":value,"text":note})
+     if repeats>repeats_before:
+      var extra: int = repeats-repeats_before
+      steps.append({"kind":"retrigger","id":id,"value":value,"text":"+%d %s" % [extra,"trigger" if extra==1 else "triggers"]})
    if eligible:
     points=points.plus(value)
     event_triggers+=repeats
   if gate==2 and guardian().id=="quiet": points=points.times(.75)
   points=points.floored()
   full=full.plus(points)
+  if record: steps.append({"kind":"bank","index":event.index,"value":points,"subtotal":full,"text":"Blocked by guardian" if not eligible else "Guardian x0.75" if gate==2 and guardian().id=="quiet" else "Merge scored"})
   trigger_count+=event_triggers
   entries.append({"e":t.e,"index":event.index,"points":points,"triggers":event_triggers,"muted":not eligible})
   if not preview and t.fx.get("glass",false) and rng.randf()<.25: cells[event.index]=null
@@ -323,7 +345,11 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false) -
  var ordered_fired: Array = []
  for relic in relics:
   if fired.has(relic.id): ordered_fired.append(relic.id)
- return {"score":full,"triggers":trigger_count,"money":income,"entries":entries,"fired":ordered_fired}
+ return {"score":full,"triggers":trigger_count,"money":income,"entries":entries,"fired":ordered_fired,"steps":steps}
+
+static func _factor_text(value) -> String:
+ var number = Num.of(value)
+ return str(snappedf(number.to_float(),.001)) if number.e<5 else number.fmt()
 
 func can_slide(source: Array = []) -> bool:
  for direction in ["left","right","up","down"]:
@@ -336,7 +362,7 @@ func highest(source: Array = []) -> int:
   if cell!=null: value=maxi(value,int(cell.e))
  return value
 
-func move(direction: String) -> bool:
+func move(direction: String, capture_steps: bool = true) -> bool:
  if phase!="play" or jammed: return false
  var outcome: Dictionary = slide(direction)
  if not outcome.changed: return false
@@ -350,11 +376,12 @@ func move(direction: String) -> bool:
   if guardian().id=="toll" and gate_swipes%4==0: cost+=1
  last_dir=direction
  moves=maxi(0,moves-cost)
- var gain: Dictionary = score_merges(outcome.events,previous_highest)
+ var gain: Dictionary = score_merges(outcome.events,previous_highest,false,capture_steps)
  last_merge=gain.score
  last_triggers=gain.triggers
  last_entries=gain.entries
  fired_relics=gain.fired
+ last_score_steps=gain.steps
  score=score.plus(gain.score)
  total_score=total_score.plus(gain.score)
  best_exp=maxi(best_exp,highest())
@@ -689,6 +716,7 @@ func restore(state) -> bool:
  if runes is not Dictionary: return false
  for key in ["spawn","gold","glass","steel","seal"]:
   if not _finite(runes.get(key)) or runes[key]<0: return false
+ last_score_steps=[]
  var restored: Dictionary = decode(state)
  for key in snapshot().keys():
   if key not in ["version","rng_state"] and restored.has(key): set(key,restored[key])

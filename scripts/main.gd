@@ -30,6 +30,8 @@ var _action_epoch := 0
 var _auto_epoch := 0
 var _move_epoch := 0
 var _move_exponent := 0
+var _move_score_before = Num.new()
+var scoring_sequence: Node
 var _inspector_return := ""
 var _collection_category := "relic"
 var _stick := Vector2.ZERO
@@ -72,7 +74,11 @@ func _ready() -> void:
  run_view.wallet.count_tick.connect(func(): effects.play("coin"))
  run_view.board.swiped.connect(_request_move)
  run_view.board.cell_selected.connect(_tile_click)
- run_view.board.animation_finished.connect(_finish_move)
+ scoring_sequence=preload("res://ui/scoring_sequence.gd").new()
+ add_child(scoring_sequence)
+ scoring_sequence.step_started.connect(_score_step)
+ scoring_sequence.finished.connect(_finish_move)
+ run_view.board.animation_finished.connect(_begin_score_sequence)
  overlay.close_requested.connect(_close_overlay)
  auto_timer=Timer.new()
  auto_timer.wait_time=.25/maxi(1,auto_speed)
@@ -173,6 +179,7 @@ func _open(title: String, id: String, dimensions: Vector2 = Vector2(930,710), cl
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
+ _settle_move()
  return overlay.open(title,id,dimensions,closable,top)
 
 func _close_overlay() -> void:
@@ -192,6 +199,8 @@ func _show_home() -> void:
  backdrop.material.set_shader_parameter("shop",0.0)
  home_active=true
  _action_epoch+=1
+ scoring_sequence.cancel()
+ run_view.cancel_score_display()
  _stop_auto()
  moving=false
  _input_buffer.clear()
@@ -251,6 +260,8 @@ func _continue_run() -> void:
 
 func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -> void:
  _action_epoch+=1
+ scoring_sequence.cancel()
+ run_view.cancel_score_display()
  moving=false
  run_view.board.cancel_animation()
  _input_buffer.clear()
@@ -307,28 +318,48 @@ func _play(direction: String) -> void:
  var before: Array = g.cells.duplicate(true)
  var slid: Dictionary = g.slide(direction)
  if not slid.changed: return
- if not g.move(direction): return
+ _move_score_before=g.score
+ var show_scoring: bool = not reduced_motion and auto_speed<8
+ if not g.move(direction,show_scoring): return
  moving=true
+ if show_scoring and not g.last_score_steps.is_empty(): run_view.begin_score_display(_move_score_before)
  _move_epoch=_action_epoch
  _refresh_run(false)
- run_view.pulse_scoring(g)
  var max_merged := 0
  for event in slid.events: max_merged=maxi(max_merged,int(event.tile.e))
  effects.play("merge" if not slid.events.is_empty() else "slide",clampi(max_merged-2,0,5))
  _move_exponent=max_merged
  if reduced_motion:
   run_view.board.show_cells(g.cells)
-  _finish_move()
+  _begin_score_sequence()
  else:
   run_view.board.animate_move(before,g.cells,direction,slide_duration/maxi(1,auto_speed) if auto_on else slide_duration)
+
+func _begin_score_sequence() -> void:
+ if _move_epoch!=_action_epoch or not moving: return
+ scoring_sequence.play(g.last_score_steps,8 if reduced_motion else auto_speed)
+
+func _score_step(step: Dictionary) -> void:
+ if _move_epoch!=_action_epoch or not moving: return
+ run_view.show_score_step(step,_move_score_before,g.target())
+ if step.kind in ["relic","retrigger"]: effects.scoring_tick(step.kind=="retrigger")
+
+func _settle_move() -> void:
+ if not moving: return
+ _input_buffer.clear()
+ scoring_sequence.cancel()
+ run_view.board.show_cells(g.cells)
+ _finish_move()
 
 func _finish_move() -> void:
  if _move_epoch!=_action_epoch or not moving: return
  var max_merged: int = _move_exponent
  moving=false
- if g.last_merge.m>0:
+ run_view.cancel_score_display()
+ _refresh_run(false)
+ if g.last_merge.m>0 and auto_speed<8 and not reduced_motion:
   effects.number_popup(Vector2(673,309),"+"+g.last_merge.fmt(),UIStyle.GOLD,max_merged>=10)
- if max_merged>=7: effects.burst(Vector2(673,565),UIStyle.GOLD,6 if max_merged<10 else 16)
+ if max_merged>=7 and auto_speed<8 and not reduced_motion: effects.burst(Vector2(673,565),UIStyle.GOLD,6 if max_merged<10 else 16)
  _update_record()
  if g.phase!="play":
   _input_buffer.clear()
@@ -380,6 +411,7 @@ func _tick_auto() -> void:
 func _reorder_to(from: int, to: int) -> void:
  if from<0 or to<0 or from>=g.relics.size() or to>=g.relics.size() or from==to: return
  _stop_auto()
+ _settle_move()
  var relic: Dictionary = g.relics.pop_at(from)
  g.relics.insert(to,relic)
  g.save_run()
@@ -387,6 +419,7 @@ func _reorder_to(from: int, to: int) -> void:
  _refresh_run(false)
 
 func _inspect_item(kind: String, index: int) -> void:
+ _settle_move()
  var id: String = ""
  if kind=="relic" and index>=0 and index<g.relics.size(): id=g.relics[index].id
  elif kind=="inventory" and index>=0 and index<g.inventory.size(): id=g.inventory[index]
@@ -422,6 +455,7 @@ func _show_info(id: String, kind: String = "collection", index: int = -1, return
   if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): _sell("inventory",index),UIStyle.RED,Color("f4aa86")))
 
 func _select_item(index: int) -> void:
+ _settle_move()
  if index<0 or index>=g.inventory.size(): return
  var id: String = g.inventory[index]
  if Cat.RUNES.has(id) or id in ["mercy","hourglass"]:
@@ -606,12 +640,13 @@ func _pick_pack(id: String) -> void:
  run_view.pulse_acquired(id,.34)
 
 func _show_new_run() -> void:
+ _settle_move()
  _stop_auto()
  _input_buffer.clear()
  _inspector_return=""
  _clear_context()
  var host: Control = overlay.open_custom("new",Vector2(1240,790),true,55)
- overlay.panel.add_theme_stylebox_override("panel",UIStyle.box(Color("17373ef5"),Color("4a696b"),0,0,0))
+ overlay.panel.add_theme_stylebox_override("panel",UIStyle.box(Color("17373ef5"),Color("4a696b"),16,0,0))
  run_selector=RUN_SELECT_SCENE.instantiate()
  run_selector.chosen_board=chosen_board
  run_selector.page=board_page
@@ -682,7 +717,7 @@ func _show_settings() -> void:
  col.add_child(_button("SOUND EFFECTS  ·  "+("ON" if sound_on else "OFF"),func(): _toggle_sound(); _show_settings()))
  col.add_child(_button("REDUCED MOTION  ·  "+("ON" if reduced_motion else "OFF"),func(): _toggle_motion(); _show_settings()))
  col.add_child(_paragraph("Stops background drift, tile/card motion, flying coins, and animated counters. Moves resolve instantly.",UIStyle.MUTED,13))
- col.add_child(_button("AUTOPLAYER SPEED  ·  %d×" % auto_speed,func(): _cycle_speed(); _show_settings()))
+ col.add_child(_button("GAME SPEED  ·  %d×" % auto_speed,func(): _cycle_speed(); _show_settings()))
  col.add_child(_button("TOGGLE FULLSCREEN",_toggle_fullscreen))
  if has_run: col.add_child(_button("EXPORT SAVED RUN",func(): _save_dialog(false)))
  col.add_child(_button("IMPORT SAVE",func(): _save_dialog(true)))
@@ -732,6 +767,7 @@ func _toggle_motion() -> void:
   shop_view.wallet.motion_enabled=not reduced_motion
  if is_instance_valid(run_selector) and run_selector.is_inside_tree(): run_selector.motion_enabled=not reduced_motion
  if reduced_motion:
+  _settle_move()
   effects.clear_transients()
   run_view.wallet.reset(g.money)
   if is_instance_valid(shop_view) and shop_view.is_inside_tree(): shop_view.wallet.reset(g.money)
@@ -743,6 +779,7 @@ func _toggle_motion() -> void:
 func _cycle_speed() -> void:
  auto_speed=[1,2,4,8][([1,2,4,8].find(auto_speed)+1)%4]
  auto_timer.wait_time=.25/auto_speed
+ if auto_speed>=8: _settle_move()
  _save_preferences()
  if not home_active: _refresh_run(false)
 

@@ -30,7 +30,7 @@ html = html[:match.start(1)] + json.dumps(config, separators=(',', ':')) + html[
 logo = Path(__file__).resolve().parents[1] / 'assets/pixel/logo.png'
 if logo.is_file():
     uri = 'data:image/png;base64,' + base64.b64encode(logo.read_bytes()).decode()
-    style = '<style id="gatefold-pixel-loader">#status{background:#172e36!important}#status::before{content:""!important;display:block;width:392px;height:96px;background:url(' + uri + ') center/contain no-repeat;image-rendering:pixelated}#status-progress{border-radius:0!important;border:2px solid #d5b46d;height:12px!important}#status-notice{font-family:monospace}</style>'
+    style = '<style id="gatefold-pixel-loader">#status{background:#172e36!important}#status::before{content:""!important;display:block;width:392px;height:96px;background:url(' + uri + ') center/contain no-repeat;image-rendering:pixelated}#status-progress{border-radius:5px!important;border:2px solid #d5b46d;height:12px!important}#status-notice{font-family:monospace}</style>'
     html = re.sub(r'<style id="gatefold-pixel-loader">.*?</style>', '', html)
     html = html.replace('</head>', style + '</head>')
 html_path.write_text(html)

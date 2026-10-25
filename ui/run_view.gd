@@ -33,6 +33,10 @@ var _pocket_count: Label
 var _next: Control
 var _board_tag: Label
 var _spawn_badge: Label
+var _receipt_heading: Label
+var scoring := false
+var visible_score = UIStyle.Num.new()
+var _active_relic: Control
 var _receipt_points: Label
 var _receipt_counts: Label
 var _action: Button
@@ -99,6 +103,9 @@ func _button(text: String, rect: Rect2, action: String, color: Color = Color("34
 
 func _build() -> void:
  _sidebar_background=_panel(Rect2(0,0,252,900),Color("23343c"),Color("536268"))
+ var sidebar_skin: StyleBoxFlat = _sidebar_background.get_theme_stylebox("panel")
+ sidebar_skin.corner_radius_top_left=0
+ sidebar_skin.corner_radius_bottom_left=0
  _text("GATEFOLD",Rect2(28,28,200,48),32,UIStyle.CREAM,true)
  for y in [96,464,664]:
   var rule := ColorRect.new()
@@ -163,7 +170,7 @@ func _build() -> void:
  _spawn_badge=_text("TIER 1",Rect2(1024,744,300,36),32,UIStyle.MUTED)
  board.position=Vector2(510,370)
  board.size=Vector2(420,420)
- _text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
+ _receipt_heading=_text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
  _receipt_points=_text("+0",Rect2(1024,434,300,64),64,UIStyle.CREAM,true)
  _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,300,72),32,UIStyle.MUTED)
  _target_note=_text("",Rect2(510,807,620,42),15,UIStyle.GOLD,false,self,true)
@@ -222,24 +229,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _gate_subtitle.text="GATE %d / 3" % (game.gate+1)
  _gate_name.text=game.guardian().name if game.gate==2 else ["Entry Gate","Inner Gate"][game.gate]
  _guardian_note.text=game.guardian().desc if game.gate==2 else ""
- var score_text: String = game.score.fmt()
- if score_text!=_last_score:
-  if _score_tween and _score_tween.is_valid(): _score_tween.kill()
-  if motion_enabled and game.swipes>0 and game.score.e<12 and game.score.m>0:
-   _score_tween=create_tween()
-   _score_tween.tween_method(_draw_score,_displayed_score,game.score.to_float(),.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-  else:
-   _score_label.text=score_text
-   _displayed_score=game.score.to_float() if game.score.e<12 else 0.0
-  _last_score=score_text
- UIStyle.fit(_score_label,64,32)
- var ratio: float = clampf(pow(10,game.score.log10_value()-target.log10_value()),0,1) if game.score.m>0 else 0.0
- if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
- if motion_enabled:
-  _progress_tween=create_tween()
-  _progress_tween.tween_property(_progress,"value",ratio*100,.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
- else: _progress.value=ratio*100
- _remaining.text="GATE CLEARED" if ratio>=1 else target.minus(game.score).fmt()+" TO GO"
+ _paint_score(visible_score if scoring else game.score,target,motion_enabled and not scoring and speed<8 and game.swipes>0)
  _moves.text=str(game.moves)
  _moves.add_theme_color_override("font_color",UIStyle.RED if game.moves<=5 else UIStyle.BLUE)
  wallet.motion_enabled=motion_enabled
@@ -258,15 +248,19 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _board_tag.text=game.b().name.to_upper()+" BOARD"
  _next.configure(game.next_tile)
  _spawn_badge.text="TIER %d" % (int(game.rune_levels.spawn)+1)
- _receipt_points.text="+"+game.last_merge.fmt()
- UIStyle.fit(_receipt_points,64,32)
- _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
+ if not scoring:
+  _receipt_heading.text="Last swipe"
+  _receipt_points.text="+"+game.last_merge.fmt()
+  _receipt_points.add_theme_color_override("font_color",UIStyle.CREAM)
+  UIStyle.fit(_receipt_points,64,32)
+  _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
+  _receipt_counts.add_theme_color_override("font_color",UIStyle.MUTED)
  _seed.text=game.b().name.to_upper()+" BOARD / SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
  _auto.text=("STOP AUTO " if auto_on else "START AUTO ")+("II" if game.has_upgrade("auto2") else "I")
  _speed.text="SPEED %d×" % speed
  _speed.visible=game.has_upgrade("auto1") and game.phase=="play"
- _action.visible=game.phase not in ["shop","gates"] and (game.phase!="play" or game.jammed or not target_text.is_empty())
+ _action.visible=not scoring and game.phase not in ["shop","gates"] and (game.phase!="play" or game.jammed or not target_text.is_empty())
  _action.text="CANCEL SPELL" if not target_text.is_empty() else "SHOP" if game.phase=="shop" else "RUN RESULTS" if game.phase=="over" else "TAKE A HIT  ·  -1 LIFE" if game.jammed else "GATE CLEARED" if game.phase=="reward" else "CONTINUE"
  _target_note.text=target_text
  board.targeting=not target_text.is_empty()
@@ -355,17 +349,60 @@ func pulse_acquired(id: String, delay: float = 0.0) -> void:
  for card in relic_cards+pocket_cards:
   if card.item_id==id: card.pulse(delay)
 
-func pulse_scoring(game: Game) -> void:
- if not motion_enabled: return
- var order := 0
- for index in range(game.relics.size()):
-  if game.fired_relics.has(game.relics[index].id) and index<relic_cards.size():
-   relic_cards[index].pulse(order*.03)
-   order+=1
- if game.last_merge.m>0:
-  _score_label.pivot_offset=Vector2(60,30)
-  _score_label.scale=Vector2(1.08,1.08)
-  create_tween().tween_property(_score_label,"scale",Vector2.ONE,.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+func begin_score_display(before) -> void:
+ cancel_score_display()
+ scoring=true
+ visible_score=before
+ _receipt_heading.text="Scoring"
+ _receipt_points.text="0"
+ _receipt_counts.text=""
+
+func show_score_step(step: Dictionary, before, target) -> void:
+ if not scoring: return
+ if is_instance_valid(_active_relic): _active_relic.clear_score_feedback()
+ _active_relic=null
+ _receipt_points.text=UIStyle.Num.of(step.value).fmt()
+ _receipt_points.add_theme_color_override("font_color",UIStyle.BLUE if step.kind=="retrigger" else UIStyle.GOLD)
+ UIStyle.fit(_receipt_points,64,32)
+ _receipt_counts.text=str(step.text)
+ _receipt_counts.add_theme_color_override("font_color",UIStyle.CREAM)
+ if step.has("id"):
+  _active_relic=card_for(step.id)
+  if is_instance_valid(_active_relic): _active_relic.score_trigger(step.text,step.kind=="retrigger")
+  _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
+ elif step.kind=="merge" and board.tiles.has(step.index):
+  board.tiles[step.index].pop()
+ if step.kind=="bank":
+  visible_score=UIStyle.Num.of(before).plus(step.subtotal)
+  _paint_score(visible_score,target,false)
+  _receipt_points.text="+"+UIStyle.Num.of(step.subtotal).fmt()
+
+func cancel_score_display() -> void:
+ scoring=false
+ if is_instance_valid(_active_relic): _active_relic.clear_score_feedback()
+ _active_relic=null
+ for card in relic_cards:
+  if card.scoring_active: card.clear_score_feedback()
+
+func _paint_score(value, target, animate: bool) -> void:
+ var score_text: String = value.fmt()
+ if score_text!=_last_score:
+  if _score_tween and _score_tween.is_valid(): _score_tween.kill()
+  if animate and value.e<12 and value.m>0:
+   _score_tween=create_tween()
+   _score_tween.tween_method(_draw_score,_displayed_score,value.to_float(),.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+  else:
+   _score_label.text=score_text
+   _displayed_score=value.to_float() if value.e<12 else 0.0
+  _last_score=score_text
+ UIStyle.fit(_score_label,64,32)
+ var ratio: float = clampf(pow(10,value.log10_value()-target.log10_value()),0,1) if value.m>0 else 0.0
+ if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
+ if animate:
+  _progress_tween=create_tween()
+  _progress_tween.tween_property(_progress,"value",ratio*100,.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+ else: _progress.value=ratio*100
+ _remaining.text="GATE CLEARED" if ratio>=1 else target.minus(value).fmt()+" TO GO"
 
 func _draw_score(value: float) -> void:
  _displayed_score=value

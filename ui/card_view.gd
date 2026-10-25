@@ -12,6 +12,9 @@ var _hover: Tween
 var _pulse: Tween
 var _rest_rotation := 0.0
 var _caption := ""
+var scoring_active := false
+var _score_pulse: Tween
+var _score_badge: PanelContainer
 @onready var illustration: TextureRect = $Art
 @onready var title: Label = $Title
 @onready var rarity: Label = $Rarity
@@ -40,12 +43,12 @@ func _refresh() -> void:
  var data: Dictionary = Cat.data_for(item_id)
  if data.is_empty(): return
  var colors: Array = UIStyle.colors(item_id)
- var surface: StyleBoxFlat = UIStyle.box(colors[0],colors[0].lightened(.35),7,4,4)
+ var surface: StyleBoxFlat = UIStyle.box(colors[0],colors[0].lightened(.35),12,4,4)
  surface.border_width_bottom=5
  add_theme_stylebox_override("normal",surface)
- add_theme_stylebox_override("hover",UIStyle.box(colors[0].lightened(.08),UIStyle.GOLD,7,5,4))
+ add_theme_stylebox_override("hover",UIStyle.box(colors[0].lightened(.08),UIStyle.GOLD,12,5,4))
  add_theme_stylebox_override("pressed",surface)
- var focus: StyleBoxFlat = UIStyle.box(Color.TRANSPARENT,UIStyle.GOLD,8,0,0)
+ var focus: StyleBoxFlat = UIStyle.box(Color.TRANSPARENT,UIStyle.GOLD,13,0,0)
  focus.draw_center=false
  focus.set_border_width_all(3)
  add_theme_stylebox_override("focus",focus)
@@ -92,9 +95,11 @@ func _layout() -> void:
 func _draw() -> void:
  if item_id.is_empty(): return
  var palette: Array = UIStyle.colors(item_id)
- var edge: Color = UIStyle.GOLD if selected else Color(palette[0]).lightened(.35)
- draw_rect(Rect2(3,3,size.x-6,size.y-9),edge,false,1)
- draw_rect(Rect2(6,size.y-8,size.x-12,2),Color(palette[0]).darkened(.35))
+ var edge: Color = UIStyle.GOLD if selected or scoring_active else Color(palette[0]).lightened(.35)
+ var rim: StyleBoxFlat = UIStyle.box(Color.TRANSPARENT,edge,9,0,0)
+ rim.draw_center=false
+ rim.set_border_width_all(1)
+ draw_style_box(rim,Rect2(3,3,size.x-6,size.y-9))
 
 func _tilt(entered: bool) -> void:
  z_index=8 if entered else 0
@@ -116,9 +121,41 @@ func pulse(delay: float = 0.0) -> void:
  _pulse.tween_property(self,"self_modulate",Color(1.38,1.25,1.06),.055)
  _pulse.tween_property(self,"self_modulate",Color.WHITE,.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
+func score_trigger(note: String, retrigger: bool = false) -> void:
+ clear_score_feedback()
+ if not motion_enabled: return
+ scoring_active=true
+ z_index=9
+ _score_badge=UIStyle.panel(Color("24343a"),UIStyle.BLUE if retrigger else UIStyle.GOLD,4)
+ _score_badge.name="ScoreBadge"
+ _score_badge.z_index=15
+ var text: Label = UIStyle.label(note,27,UIStyle.BLUE if retrigger else UIStyle.GOLD)
+ text.add_theme_font_size_override("font_size",27)
+ text.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+ _score_badge.add_child(text)
+ add_child(_score_badge)
+ _score_badge.size=Vector2(maxf(72,text.get_minimum_size().x+12),40)
+ _score_badge.position=Vector2(roundf((size.x-_score_badge.size.x)/2),8)
+ scale=Vector2(1.065,1.065) if retrigger else Vector2(1.045,1.045)
+ _score_pulse=create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+ _score_pulse.tween_property(self,"scale",Vector2.ONE,.18)
+ queue_redraw()
+
+func clear_score_feedback() -> void:
+ if _score_pulse and _score_pulse.is_valid(): _score_pulse.kill()
+ if is_instance_valid(_score_badge):
+  remove_child(_score_badge)
+  _score_badge.queue_free()
+ _score_badge=null
+ scoring_active=false
+ scale=Vector2.ONE
+ z_index=8 if is_hovered() else 0
+ queue_redraw()
+
 func set_motion(enabled: bool) -> void:
  motion_enabled=enabled
  if enabled: return
+ clear_score_feedback()
  if _hover and _hover.is_valid(): _hover.kill()
  if _pulse and _pulse.is_valid(): _pulse.kill()
  scale=Vector2.ONE

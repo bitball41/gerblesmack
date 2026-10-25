@@ -80,7 +80,7 @@ func open_custom(id: String, dimensions: Vector2, can_close: bool = true, top: f
  open("",id,dimensions,false,top)
  closable=can_close
  for child in panel.get_children(): panel.remove_child(child); child.queue_free()
- panel.add_theme_stylebox_override("panel",UIStyle.box(Color("293b45"),Color("98b2b3"),0,7,0))
+ panel.add_theme_stylebox_override("panel",UIStyle.box(Color("293b45"),Color("98b2b3"),16,7,0))
  body=null
  var host := Control.new()
  host.name="CustomView"

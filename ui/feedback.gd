@@ -9,6 +9,7 @@ var _sounds: Dictionary = {}
 var _particles: Array = []
 var _player_cursor := 0
 var _last_coin_ms := 0
+var _last_score_ms := 0
 var _visual_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -33,6 +34,12 @@ func play(event: String, tier: int = 0) -> void:
  player.volume_db=-22 if event=="hover" else -20 if event=="coin" else -14
  player.pitch_scale=_visual_rng.randf_range(.98,1.02)
  player.play()
+
+func scoring_tick(retrigger: bool) -> void:
+ var now: int = Time.get_ticks_msec()
+ if now-_last_score_ms<55: return
+ _last_score_ms=now
+ play("select" if retrigger else "click")
 
 func _synthesize(event: String, tier: int) -> AudioStreamWAV:
  var key: String = event+str(clampi(tier,0,5)) if event=="merge" else event
