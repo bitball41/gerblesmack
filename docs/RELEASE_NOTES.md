@@ -1,3 +1,17 @@
+# Retrigger fixes — 1.1.1
+
+- Retriggers now apply the scoring effects they reach. Additions scale by activation count, multipliers use repeated powers, Singularity composes its powers, and Resonance multiplies every growing bonus. Batching preserves left-to-right order, seal passes, Guardian rules, and Mobius reverse scoring.
+- Devourer retains each absorbed ability's Echoed passes. Host and inherited Echoes combine independently; growth and payouts occur once per actual merge.
+- Exact trigger counters avoid native integer overflow. Scores promote to layered exponents when needed; existing scientific saves still load, and huge totals retain meaningful comparisons, progress bars, and save data.
+- Small scoring batches show intermediate values. Large batches show activation counts and automatically accelerate; enormous chains use compressed visual groups. 8x and reduced motion skip the receipt queue. Playback never mutates the run.
+- No Relic values, prices, edition strengths, or balance settings changed.
+
+The regression fixture with Echo Chamber, an Echoed Devourer containing two Echo Chambers, Conductor/Ghostwriter, Echoed Ascension, Mobius, four merges, and seals resolves all **663,552 triggers**. Its synthetic Ghostwriter x100,000 fixture scores approximately **8.41e51052**.
+
+Eight Godot suites include an independent unbatched reference, the large build, inherited Echoes, huge powers/counters, save round trips, and adaptive playback. Browser acceptance compares the same saved result at 1x, 2x, 4x, 8x, and reduced motion.
+
+---
+
 # Fracture — 1.1.0
 
 The expansion retains the original game's board statistics, Relic effects, upgrades, and ordered combos. Endless targets accelerate after floor eight.

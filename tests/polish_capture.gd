@@ -68,6 +68,8 @@ func _process(_delta: float) -> void:
  report.receipt_note=run_view._receipt_counts.text
  report.scoring_cursor=scoring_sequence.cursor
  report.scoring_count=g.last_score_steps.size()
+ report.triggers=Num.of(g.last_triggers).fmt()
+ report.scoring_queue=scoring_sequence.steps.size()
  report.difficulty=g.f.difficulty
  report.curse=g.f.curse
  report.pack_remaining=g.f.pack_remaining
@@ -131,8 +133,8 @@ func _bounds(control: Control) -> Array:
  return [bounds.position.x,bounds.position.y,bounds.size.x,bounds.size.y]
 
 func _scoring_fixture(scene: String) -> void:
- auto_speed=8 if scene=="scoring_fast" else 1
- reduced_motion=false
+ auto_speed=8 if scene in ["scoring_fast","scoring_huge_fast"] else 4 if scene=="scoring_huge_4x" else 2 if scene=="scoring_huge_2x" else 1
+ reduced_motion=scene=="scoring_huge_reduced"
  g.floor_num=1 if scene=="scoring_win" else 10
  g.moves=30
  g.cells.fill(null)
@@ -141,6 +143,17 @@ func _scoring_fixture(scene: String) -> void:
  g.relics=[]
  for id in ["carbon","echo","monolith","feedback","resonance"]: g._grant(id)
  g.relics[3].carry=3
+ if scene.begins_with("scoring_huge"):
+  g.floor_num=40; g.f.extra_slots=2
+  g.cells.fill(null)
+  for index in [0,4,8,12]:
+   g.cells[index]=g.tile(11,{},true);g.cells[index+1]=g.tile(11)
+  g.relics=[]
+  for id in ["echo","devourer","conductor","ghostwriter","ascension","mobius"]: g._grant(id)
+  g.relics[1].echoed=true
+  g.relics[1].abilities=[{"id":"echo","growth":Num.new(1),"charge":0,"carry":0},{"id":"echo","growth":Num.new(1),"charge":0,"carry":0}]
+  g.relics[3].growth=Num.new(1,5)
+  g.relics[4].echoed=true
  g.score=Num.new(20); g.total_score=Num.new(20)
  _refresh_run(); effects.clear_transients()
 

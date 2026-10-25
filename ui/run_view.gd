@@ -275,7 +275,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
   _receipt_points.text="+"+game.last_merge.fmt()
   _receipt_points.add_theme_color_override("font_color",UIStyle.CREAM)
   UIStyle.fit(_receipt_points,64,32)
-  _receipt_counts.text="MERGES %d\nTRIGGERS %d" % [game.last_entries.size(),game.last_triggers]
+  _receipt_counts.text="MERGES %d\nTRIGGERS %s" % [game.last_entries.size(),UIStyle.Num.of(game.last_triggers).fmt()]
   _receipt_counts.add_theme_color_override("font_color",UIStyle.MUTED)
  _seed.text=game.b().name.to_upper()+" BOARD / SEED: "+game.seed_text
  _auto.visible=game.has_upgrade("auto1") and game.phase=="play" and not game.jammed
@@ -415,7 +415,7 @@ func show_score_step(step: Dictionary, before, target) -> void:
  if step.has("id"):
   _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() else card_for(step.id)
   if is_instance_valid(_active_relic):
-   _active_relic.score_trigger(step.text,step.kind=="retrigger")
+   _active_relic.score_trigger(step.get("badge_text",step.text),step.kind=="retrigger")
   _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
  elif step.kind=="merge" and board.tiles.has(step.index):
   board.tiles[step.index].pop()
@@ -443,7 +443,7 @@ func _paint_score(value, target, animate: bool) -> void:
    _displayed_score=value.to_float() if value.e<12 else 0.0
   _last_score=score_text
  UIStyle.fit(_score_label,64,32)
- var ratio: float = clampf(pow(10,value.log10_value()-target.log10_value()),0,1) if value.m>0 else 0.0
+ var ratio: float = value.ratio_to(target)
  if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
  if animate:
   _progress_tween=create_tween()

@@ -101,7 +101,7 @@ static func preview(g, direction: String, anchor: int) -> Dictionary:
  var shape: float = evaluate(q,anchor)
  var terminal = 1000000+shape if q.score.cmp(target)>=0 else -1000000+shape if q.moves<=0 else null
  var remaining = target.minus(g.score)
- var fraction: float = minf(1,pow(10,minf(0,scored.score.log10_value()-remaining.log10_value()))) if scored.score.m>0 else 0.0
+ var fraction: float = scored.score.ratio_to(remaining)
  var reward: float = fraction*(1500+1800.0/(g.moves+1))+minf(80,maxf(0,scored.score.log10_value()))*2+minf(20,scored.money.to_float())*2
  return {"g":q,"dir":direction,"order":DIRECTIONS.find(direction),"shape":shape,"reward":reward,"terminal":terminal,"events":slid.events,"value":terminal if terminal!=null else reward+shape}
 

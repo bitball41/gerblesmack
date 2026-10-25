@@ -76,6 +76,14 @@ jobs:
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" scoring.log; then
             exit 1
           fi
+      - name: Retrigger mathematics and huge-score checks
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script tests/retriggers.gd 2>&1 | tee retriggers.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|^ERROR:|FAIL:" retriggers.log; then
+            exit 1
+          fi
       - name: Fracture model and interface checks
         shell: bash
         run: |

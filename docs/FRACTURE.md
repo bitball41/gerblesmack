@@ -87,3 +87,11 @@ Save version 3 retains expansion metadata, contracts, copied abilities, reserve/
 Seven automated suites run before publication. They include frozen pre-Fracture source outputs, production-mode parity for every original Relic, all 25 board starts in both modes, expansion effects, save migration, invalid-use atomicity, and scene callback checks. Browser checks cover 1440x900 and 1366x768 layouts, actual shop/pack/target interactions, scoring-speed equivalence, and seeded Cursed-run reload. Test scenes and the QA bridge are excluded from production.
 
 Remote checkpoints on `fracture-release` preserve each substantial stage. Final release verification is recorded in the Git commit and Pages workflow, rather than treating an intermediate checkpoint as a finished build.
+
+## Retrigger correction (1.1.1)
+
+Repeat producers still multiply the incoming trigger count by their existing value. Every trigger reaching a later addition applies that addition; every trigger reaching a multiplier applies that multiplier. For incoming count n, these batches are `points + bonus*n`, `points * factor^n`, and `points^(power^n)` respectively. Trigger producers apply their score multiplier n times and expand the count once by their fan-out, rather than recursively reapplying themselves to their own output. Resonance uses the product of its successive bonuses, whose exponent is `n*(position+1) + n*(n-1)/2`. Feedback preserves its point-copy rule and advances its carry using exact integer arithmetic, including generated triggers.
+
+These are scoring corrections, with no changes to catalog numbers, prices, editions, or balance. Growth and cash remain tied to actual merges. Devourer's scoring passes multiply its host Echoes by each absorbed ability's own Echoes; regular physical relics count their own modifier once. Conductor retains its existing scoring-only copy behavior.
+
+Ordinary scores retain the two-field scientific save representation. Beyond the precision of a native exponent, an optional third field records the exponent layer. `eeX` means `10^(10^X)`; each additional e adds another outer power of ten. Arithmetic retains scientific precision rather than allocating score digits. Animation receipts are transient and never replay into these rules.

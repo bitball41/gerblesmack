@@ -29,3 +29,7 @@ The gate/UI flow suite also checks the compact tooltip footprint, the separate B
 
 
 Optional browser acceptance: install Playwright locally, set `GODOT_BIN` if Godot is not on PATH, run `python3 tools/export_review.py`, then `node tests/browser_fracture.cjs`. Set `GATEFOLD_CHROMIUM` for a specific browser executable. Screenshots go to `build/review`. Rebuild the ordinary Web preset before publishing; the workflow always exports the production main scene.
+
+`retriggers.gd` adds an unbatched reference over 1,210 small chains, actual Workshop inheritance/save checks, the agreed 663,552-trigger build with an independently computed score exponent, no duplicate growth/payouts, post-Mobius swipes, layered-power saves and comparisons, 2^80 trigger counters, and small/large/instant presentation checks. The frozen legacy harness remains only for port comparison; imported old runs use the corrected production scorer.
+
+After exporting the review fixture, `node tests/browser_retriggers.cjs` compares the huge run at 1x, 2x, 4x, 8x, and reduced motion, checking identical scores and saved state. It captures active and settled frames under `build/review`. Set `GATEFOLD_CHROMIUM` when using a browser outside Playwright's default installation.

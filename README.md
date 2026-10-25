@@ -8,7 +8,7 @@ Every shop has two independent pack slots. Five equally likely families—Standa
 
 Rounded cards and panels share a quiet tabletop layout. Relics keep distinct colors and stay together in one visible row; pocket overflow uses pages. Rules and current scaling values appear beside the item, with selling available after selection. The illustrated Board button previews current tiles and effects. Next round opens a separate gate selector with progress, authoritative targets, and Guardian rules.
 
-Scoring follows actual Relic order, seal passes, and retriggers, then banks the exact total. The presentation accelerates with large chains. At 8x or with reduced motion, playback and its queue are skipped. Paper, wood, metal, and pack sounds distinguish actions. All new artwork uses editable, manually specified pixel shapes; no image-generation models are used.
+Scoring batches every actual Relic activation in order, including inherited Echoes, seal passes, and reverse chains. Trigger counters do not wrap; scores can promote to layered exponents. Small batches show intermediate values, while large chains compress and accelerate. At 8x or with reduced motion, playback and its queue are skipped. Paper, wood, metal, and pack sounds distinguish actions. All new artwork uses editable, manually specified pixel shapes; no image-generation models are used.
 
 ## Controls
 
@@ -33,13 +33,14 @@ godot --headless --path . --script tests/ui_smoke.gd
 godot --headless --path . --script tests/polish.gd
 godot --headless --path . --script tests/gate_flow.gd
 godot --headless --path . --script tests/scoring.gd
+godot --headless --path . --script tests/retriggers.gd
 godot --headless --path . --script tests/fracture.gd
 godot --headless --path . --script tests/fracture_ui.gd
 godot --headless --path . --export-release Web build/web/index.html
 python3 tools/prepare_web.py build/web
 ```
 
-GitHub Actions runs all seven suites before publishing to GitHub Pages. Test scenes and their browser-only inspection bridge are excluded from production.
+GitHub Actions runs all eight suites before publishing to GitHub Pages. Test scenes and their browser-only inspection bridge are excluded from production.
 
 Assets are committed. Optional rebuilds use `tools/build_pixel_assets.py` (small pictograms), `tools/build_relic_plates.py` (original Relics/boards), `tools/build_fracture_art.py` (Fracture artwork), `tools/build_shop_art.py` (shop sign/vouchers), and `tools/build_sound_assets.py` (material audio). Pillow and NumPy are only needed to rebuild assets.
 
