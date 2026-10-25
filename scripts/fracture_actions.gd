@@ -174,7 +174,7 @@ static func rewind(game) -> bool:
 
 static func workshop(game, action: String, index: int = -1, other: int = -1, choice: String = "", amount: int = 0) -> bool:
  if action=="rewind": return rewind(game)
- if game.phase not in ["shop","gates","reward"]: return false
+ if game.phase not in ["shop","gates","reward"] and not (action=="chrysalis" and game.phase=="play"): return false
  match action:
   "borrow":
    if not game.has_relic("loan_shark") or game.f.floor.get("loan",false) or amount<=0 or amount>int(50*Rules.amount(game,"loan_shark")): return false

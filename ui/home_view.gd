@@ -26,7 +26,7 @@ func build(game: Game, has_save: bool, record_floor: int, record_score: String) 
  UIStyle.place(title,self,Rect2(266,150,650,135))
  var mark: TextureRect = UIStyle.texture("gate",UIStyle.GOLD)
  UIStyle.place(mark,self,Rect2(204,195,47,62))
- UIStyle.place(UIStyle.label("2048 ROGUELIKE",32,Color("a6c6be")),self,Rect2(271,285,550,40))
+ UIStyle.place(UIStyle.label("FRACTURE / 2048 ROGUELIKE",32,Color("a6c6be")),self,Rect2(271,285,550,40))
  _hero=Control.new()
  _hero.mouse_filter=Control.MOUSE_FILTER_IGNORE
  UIStyle.place(_hero,self,Rect2(213,337,550,430))

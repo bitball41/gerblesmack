@@ -4,6 +4,7 @@ const Num = preload("res://scripts/num.gd")
 const RunRng = preload("res://scripts/run_rng.gd")
 const Rules = preload("res://scripts/fracture_rules.gd")
 const Market = preload("res://scripts/fracture_market.gd")
+const Geometry = preload("res://scripts/grid_geometry.gd")
 const Actions = preload("res://scripts/fracture_actions.gd")
 const SAVE_PATH = "user://gatefold-godot-v1.json"
 const PHASES = ["play","reward","failed","shop","gates","over"]
@@ -214,17 +215,7 @@ func slide(direction: String, source: Array = []) -> Dictionary:
  out.fill(null)
  var events: Array = []
  var changed := false
- var segments: Array = []
- for line in range(4):
-  var positions: Array = []
-  for p in range(4):
-   var index: int = line*4+p if direction=="left" else line*4+3-p if direction=="right" else p*4+line if direction=="up" else (3-p)*4+line
-   if index==int(f.block):
-    if not positions.is_empty(): segments.append(positions)
-    positions=[]
-   else: positions.append(index)
-  if not positions.is_empty(): segments.append(positions)
- for positions in segments:
+ for positions in Geometry.lines(direction,int(f.block)):
   var src: Array = []
   for index in positions:
    if input[index]!=null: src.append({"tile":input[index],"from":index})
@@ -314,7 +305,7 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
      fired.append(physical.id)
     if not eligible:
      if record and fired.size()>fired_before:
-      steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"value":Num.new(),"text":"Growth x1.15" if id=="monolith" else "+$"+income.minus(income_before).fmt()})
+      steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"value":Num.new(),"text":"Growth x"+_factor_text(1.15*boost) if id=="monolith" else "+$"+income.minus(income_before).fmt()})
      continue
     var factor = null
     match id:
@@ -363,7 +354,7 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
      value=value.times(factor)
      fired.append(physical.id)
     if record and fired.size()>fired_before:
-     var note: String = "x"+_factor_text(factor) if factor!=null else "+"+_factor_text(8*boost) if id=="carbon" else "+"+_factor_text(float(relic.charge)*boost) if id=="battery" else "^1.2" if id=="singularity" else "+$"+income.minus(income_before).fmt()
+     var note: String = "x"+_factor_text(factor) if factor!=null else "+"+_factor_text(8*boost) if id=="carbon" else "+"+_factor_text(float(relic.charge)*boost) if id=="battery" else "^"+_factor_text(1.2*boost) if id=="singularity" else "+$"+income.minus(income_before).fmt()
      steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"index":event.index,"value":value,"text":note})
      if repeats>repeats_before:
       var extra: int = repeats-repeats_before
@@ -401,8 +392,10 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
  return {"score":full,"triggers":trigger_count,"money":income,"entries":entries,"fired":ordered_fired,"steps":steps}
 
 static func _factor_text(value) -> String:
- var number = Num.of(value)
- return str(snappedf(number.to_float(),.001)) if number.e<5 else number.fmt()
+ var n = Num.of(value)
+ if n.e>=5: return n.fmt()
+ var amount: float = snappedf(n.to_float(),.001)
+ return str(int(amount)) if amount==floorf(amount) else str(amount)
 
 func can_slide(source: Array = []) -> bool:
  for direction in ["left","right","up","down"]:
@@ -581,6 +574,12 @@ func buy_item(id: String) -> bool:
  else: shop_offers[shop_offers.find(id)]=""
  if f.locked_offer==id: f.locked_offer=""
  if f.stowed.get("id","")==id: f.stowed={}
+ if id=="storefront1" and shop_offers.size()==4:
+  var pool: Array = _eligible_relics().filter(func(item): return not shop_offers.has(item))
+  if not pool.is_empty():
+   var extra: String = rng.pick(pool)
+   shop_offers.append(extra)
+   f.offer_tags[extra]=Market.roll_tags(self)
  result_text="Purchased "+Cat.name_for(id)
  save_run()
  return true
@@ -940,6 +939,7 @@ func queue_gate() -> bool:
 func begin_gate() -> bool:
  if phase!="gates" or not f.nomad_choices.is_empty(): return false
  phase="play"
+ f.nomad_trade=false
  save_run()
  return true
 

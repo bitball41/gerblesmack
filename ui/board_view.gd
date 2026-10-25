@@ -1,5 +1,8 @@
 extends Control
 const UIStyle = preload("res://ui/skin.gd")
+const Geometry = preload("res://scripts/grid_geometry.gd")
+var blocked_cell := -1
+var allowed_targets: Array = []
 const TILE_SCENE: PackedScene = preload("res://scenes/ui/tile.tscn")
 signal cell_selected(index: int)
 signal swiped(direction: String)
@@ -31,7 +34,17 @@ func _draw() -> void:
   if targeting:
    style.border_color=UIStyle.GOLD if selected_cell==index else Color("7ba49e")
    style.bg_color=Color("35515a")
+  if index==blocked_cell:
+   style.bg_color=Color("38464d")
+   style.border_color=Color("84918e")
+  elif targeting and not allowed_targets.is_empty() and not allowed_targets.has(index):
+   style.bg_color=Color("22363e")
+   style.border_color=Color("40525a")
   draw_style_box(style,Rect2(position_in_grid,cell_size))
+  if index==blocked_cell:
+   var middle: Vector2 = position_in_grid+cell_size*.5
+   draw_line(middle-Vector2(17,17),middle+Vector2(17,17),Color("a9b5ae"),5)
+   draw_line(middle+Vector2(-17,17),middle+Vector2(17,-17),Color("a9b5ae"),5)
  if inner.size.x<0: return
 
 func _inner() -> Rect2:
@@ -84,14 +97,7 @@ func animate_move(before: Array, after: Array, direction: String, duration: floa
  var destinations: Dictionary = {}
  var merged: Array = []
  var departed: Array = []
- for line in range(4):
-  var positions: Array = []
-  for p in range(4):
-   match direction:
-    "left": positions.append(line*4+p)
-    "right": positions.append(line*4+3-p)
-    "up": positions.append(p*4+line)
-    "down": positions.append((3-p)*4+line)
+ for positions in Geometry.lines(direction,blocked_cell):
   var occupied: Array = positions.filter(func(index): return before[index]!=null)
   var k := 0
   var write := 0

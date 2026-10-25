@@ -370,3 +370,36 @@ static func valid_state(data) -> bool:
  for id in data.get("nomad_choices",[]):
   if not Cat.RELICS.has(id): return false
  return true
+
+static func number(value) -> String:
+ var n = Num.of(value)
+ if n.e>=5: return n.fmt()
+ var amount: float = snappedf(n.to_float(),.001)
+ return str(int(amount)) if amount==floorf(amount) else str(amount)
+
+static func status(game, relic: Dictionary) -> String:
+ var lines: Array[String] = []
+ var edition: String = str(relic.get("edition",""))
+ var traits: Array[String] = []
+ if edition=="unbound": traits.append("Unbound")
+ elif edition=="oversaturated": traits.append("Oversaturated")
+ if relic.get("cursed",false): traits.append("Cursed")
+ if not traits.is_empty(): lines.append(" + ".join(traits)+( " / no slot" if edition=="unbound" else ""))
+ if relic.get("echoed",false): lines.append("Echoed / scoring resolves twice")
+ var boost: float = power(relic)
+ match relic.id:
+  "carbon": lines.append("Current  +"+number(8*boost)+" points")
+  "monolith","compound","leech","guillotine","ghostwriter","charity","apprentice","steelworks": lines.append("Current  x"+number(current_factor(game,relic)))
+  "battery": lines.append("Stored  +"+number(float(relic.charge)*boost)+" points")
+  "echo": lines.append("Current  x"+number(2*boost)+" / triggers x"+str(maxi(1,int(2*boost))))
+  "feedback": lines.append("Trigger progress  "+str(int(relic.carry))+" / 5")
+  "resonance": lines.append("Per-trigger rate  x"+number(1.12*boost))
+  "devourer":
+   var names: Array[String] = []
+   for effect in relic.get("abilities",[]): names.append(Cat.name_for(effect.id))
+   lines.append("Inherited: "+(", ".join(names) if not names.is_empty() else "none"))
+  "paradox": lines.append("Rewind available" if not game.f.paradox_used else "Rewind used this gate")
+  "loan_shark":
+   lines.append("Borrow limit  $"+number(50*boost))
+   if Num.of(game.f.debt).m>0: lines.append("Repayment due  $"+number(Num.of(game.f.debt).times(1.5)))
+ return "\n".join(lines)

@@ -59,7 +59,7 @@ static func open_pack(game, slot: int = 0) -> bool:
  if game.phase!="shop" or not game.pack_choices.is_empty() or slot<0 or slot>=game.f.pack_offers.size(): return false
  var offer: Dictionary = game.f.pack_offers[slot]
  var cost: int = pack_cost(game,slot)
- var available: Array = pool(game,offer.type).filter(func(id): return game.can_grant(id))
+ var available: Array = pool(game,offer.type).filter(func(id): return pack_item_fits(game,id))
  if offer.bought or available.is_empty() or game.money.cmp(cost)<0: return false
  game.money=game.money.minus(cost)
  offer.bought=true
@@ -155,3 +155,13 @@ static func stow_offer(game, id: String) -> bool:
  game.f.stowed={"id":id,"tags":tags_for(game,id).duplicate(true)}
  game.save_run()
  return true
+
+static func has_pack_room(game, slot: int) -> bool:
+ if slot<0 or slot>=game.f.pack_offers.size(): return false
+ var offer: Dictionary = game.f.pack_offers[slot]
+ if offer.bought: return false
+ return pool(game,offer.type).any(func(id): return pack_item_fits(game,id))
+
+static func pack_item_fits(game, id: String) -> bool:
+ if Cat.RELICS.has(id): return not game.has_relic(id) and game.Rules.bound_count(game)<game.max_relics()
+ return game.inventory.size()<game.max_pocket()

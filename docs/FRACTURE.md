@@ -46,3 +46,12 @@ Manually specified pixel artwork is drawn for all 30 relics, 18 upgrades, 15 Fra
 Chosen tuning where the discussion was unfinished: Normal has no Curse. Cursed starts at 2 Curse; Cursed relics have x1.5 numerical power and add 2 Curse when acquired. Each Guardian attempt adds 1 Curse. Targets multiply by 1.15^Curse; each 5 Curse removes one starting move. Oversaturated is x2 and independent of Cursed. Endless adds 2^(d(d+1)/2) after floor 8, with d=floor-8. Pack-size weights are 60% Standard, 28% Jumbo, 12% Mega; each family is equally likely in each of two slots. New relic editions are 2% Unbound and 3% Oversaturated; Cursed-mode relics have a separate 30% Cursed roll. These tuning choices are implementation decisions, not falsely attributed prior approvals.
 
 Still pending: frontend flows, model edge-case expansion, full UI/browser checks, final deployment. Keep checkpointing on fracture-release; main stays on the last working public polish build until release validation passes.
+
+
+## Implementation checkpoint 4
+
+Frontend paths are connected: three numbered board pages (original 10 / existing named 5 / Fracture 10), Normal/Cursed selection with retained seed, mandatory Nomad companion choice, actual blocked-cell drawing/sliding, independent two-slot typed packs, Jumbo/Mega choices, offer paging/locking/stowing, Storefront floor choice, relic/tile Fracture targeting, reserve/phantom consumption, Workshop choices and fusion, and a compact owned-upgrade gallery. New item foregrounds choose the stronger contrast against each unique card color.
+
+Validation now includes 357 scene/UI checks, 126 expansion UI checks, 225 model checks, 51 gate-flow checks, 23 polish checks, and 28 scoring checks. The 2,057 frozen rule checks remain in CI. The new tests exercise UI callbacks, not only direct model operations. All current suites pass locally; browser visual review and final edge-case work remain pending.
+
+Remaining before release: browser screenshots and clicks at desktop/laptop sizes; old-save shop/pack migration; rarity/edition edge-case review; complete help/release notes; final production export/save-reload test; public deployment verification. Do not treat this branch checkpoint as a finished public release.

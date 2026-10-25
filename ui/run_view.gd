@@ -45,6 +45,7 @@ var _speed: Button
 var _seed: Label
 var _target_note: Label
 var _upgrade_zone: Control
+var _owned_upgrades: Array = []
 var _score_tween: Tween
 var _last_score: String = ""
 var _displayed_score := 0.0
@@ -65,6 +66,9 @@ var _pocket_meter: Control
 var _sidebar_play: Array[CanvasItem] = []
 var _phase_heading: Label
 var _balance_heading: Label
+var _curse_note: Label
+var _rule_notice: Label
+var _workshop: Button
 var board_button: Button
 var _board_art: TextureRect
 var _controls_hint: Label
@@ -136,6 +140,10 @@ func _build() -> void:
  for index in range(sidebar_start,get_child_count()): _sidebar_play.append(get_child(index))
  _phase_heading=_text("Shop",Rect2(32,124,188,166),48,UIStyle.CREAM,false,self,true)
  _phase_heading.visible=false
+ _curse_note=_text("",Rect2(28,260,196,60),27,Color("d4a1d8"),false,self,true)
+ _curse_note.add_theme_font_size_override("font_size",27)
+ _workshop=_button("Workshop",Rect2(28,250,196,48),"workshop",Color("6b537b"),Color("ae8cbb"),32)
+ _workshop.hide()
  _balance_heading=_text("Balance",Rect2(32,590,188,36),32,UIStyle.MUTED)
  wallet=WALLET_SCENE.instantiate()
  wallet.display_size=48
@@ -173,13 +181,14 @@ func _build() -> void:
  _receipt_heading=_text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
  _receipt_points=_text("+0",Rect2(1024,434,300,64),64,UIStyle.CREAM,true)
  _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,300,72),32,UIStyle.MUTED)
+ _rule_notice=_text("",Rect2(1024,590,340,60),27,UIStyle.GOLD,false,self,true)
+ _rule_notice.add_theme_font_size_override("font_size",27)
  _target_note=_text("",Rect2(510,807,620,42),15,UIStyle.GOLD,false,self,true)
  _action=_button("CONTINUE",Rect2(1024,606,340,54),"phase",Color("b95e50"),Color("dd8d72"),20)
  _auto=_button("START AUTO I",Rect2(1024,676,220,48),"auto",Color("327a69"),Color("78b99b"),20)
  _guardian_note=_text("",Rect2(1024,250,360,104),32,UIStyle.MUTED,false,self,true)
  _upgrade_zone=Control.new()
- UIStyle.place(_upgrade_zone,self,Rect2(1150,235,225,90))
- _text("Upgrades",Rect2(0,0,225,36),32,UIStyle.MUTED,false,_upgrade_zone)
+ UIStyle.place(_upgrade_zone,self,Rect2(1270,318,134,64))
  _speed=_button("SPEED 1x",Rect2(1256,676,138,48),"speed",Color("345360"),Color("6f8b93"),15)
  for index in range(play_start,get_child_count()): _play_controls.append(get_child(index))
  _seed=_text("",Rect2(288,866,750,22),15,Color("75918f"))
@@ -217,6 +226,12 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _phase_heading.text="Shop" if game.phase=="shop" else "Choose your next gate"
  _phase_heading.add_theme_font_size_override("font_size",54 if game.phase=="shop" else 36)
  _layout_sidebar()
+ _curse_note.visible=game.f.difficulty=="cursed"
+ _curse_note.text="CURSE %d" % int(game.f.curse)
+ _curse_note.position.y=558 if in_play else 304
+ _curse_note.size.y=28
+ _workshop.visible=target_text.is_empty() and (game.has_relic("loan_shark") or game.has_relic("risky_investment") or game.has_relic("chrysalis") or game.has_relic("paradox") or game.has_relic("guillotine") or game.has_relic("devourer") or game.has_relic("crown_echoes") or game.has_upgrade("satchel2") or game.has_upgrade("fusion1") or game.has_upgrade("wagers1") or game.f.nomad_trade)
+ _workshop.position=Vector2(1024,_canvas_size.y-92) if in_play else Vector2(28,250)
  _seed.visible=in_play
  _controls_hint.visible=in_play
  board_button.visible=game.phase=="shop"
@@ -264,6 +279,10 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _action.text="CANCEL SPELL" if not target_text.is_empty() else "SHOP" if game.phase=="shop" else "RUN RESULTS" if game.phase=="over" else "TAKE A HIT  ·  -1 LIFE" if game.jammed else "GATE CLEARED" if game.phase=="reward" else "CONTINUE"
  _target_note.text=target_text
  board.targeting=not target_text.is_empty()
+ _rule_notice.text=UIStyle.readable(str(game.f.notice))
+ _rule_notice.visible=in_play and not _action.visible and not str(game.f.notice).is_empty()
+ board.blocked_cell=int(game.f.block)
+ board.queue_redraw()
  board.motion_enabled=motion_enabled
  if redraw_board: board.show_cells(game.cells)
  _sync_cards(game)
@@ -271,7 +290,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
 
 func _sync_cards(game: Game) -> void:
  var ids: Array = game.relics.map(func(relic): return relic.id)
- var signature: String = "|".join(ids)+str(game.max_relics())
+ var signature: String = str(game.relics.map(func(r): return [r.id,r.get("uid",0),r.get("edition",""),r.get("cursed",false),r.get("echoed",false)]))+str(game.max_relics())
  if signature!=_relic_signature:
   for node in rack.get_children(): rack.remove_child(node); node.queue_free()
   relic_cards.clear()
@@ -280,6 +299,7 @@ func _sync_cards(game: Game) -> void:
   for index in range(ids.size()):
    var card: Control = CARD_SCENE.instantiate()
    card.item_id=ids[index]
+   card.item_state=game.relics[index]
    card.drag_index=index
    card.motion_enabled=motion_enabled
    card.custom_minimum_size=Vector2.ZERO
@@ -290,47 +310,59 @@ func _sync_cards(game: Game) -> void:
    card.reorder_requested.connect(func(from: int,to: int): relic_reordered.emit(from,to))
    relic_cards.append(card)
   _relic_signature=signature
- _relic_count.text="%d / %d" % [ids.size(),game.max_relics()]
- _relic_meter.sync(ids.size(),game.max_relics())
- var pocket_signature: String = "|".join(game.inventory)+str(game.max_pocket())
+ _relic_count.text="%d / %d" % [Game.Rules.bound_count(game),game.max_relics()]
+ _relic_meter.sync(Game.Rules.bound_count(game),game.max_relics())
+ var held: Array = game.inventory.duplicate()
+ for phantom in game.f.phantoms: held.append(phantom.id)
+ var pocket_signature: String = str([held,game.f.phantoms,game.f.item_tags,game.max_pocket()])
  if pocket_signature!=_pocket_signature:
   for node in pocket.get_children(): pocket.remove_child(node); node.queue_free()
   pocket_cards.clear()
-  var width := 68.0
-  var step: float = minf(79.0,(225.0-width)/maxi(1,game.inventory.size()-1))
-  for index in range(game.inventory.size()):
+  var columns: int = 4 if held.size()>6 else 3
+  var width: float = 52 if columns==4 else 68
+  var height: float = 88 if held.size()>3 else 112
+  for index in range(held.size()):
    var card: Control = CARD_SCENE.instantiate()
-   card.item_id=game.inventory[index]
+   card.item_id=held[index]
+   card.phantom=index>=game.inventory.size()
+   var actual_index: int = index-game.inventory.size() if card.phantom else index
+   var source: String = "phantom" if card.phantom else "pocket"
+   card.double_use=bool(game.consumable_tags(actual_index,source).get("double",false))
+   card.live_note=("Phantom / no pocket slot / expires after this gate" if card.phantom else "")+("\nApplies twice" if card.double_use else "")
    card.custom_minimum_size=Vector2.ZERO
    card.motion_enabled=motion_enabled
    pocket.add_child(card)
-   card.position=Vector2(index*step,0)
-   card.size=Vector2(width,112)
-   card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("inventory",pos))
+   card.position=Vector2((index%columns)*(width+10),int(index/columns)*(height+8))
+   card.size=Vector2(width,height)
+   card.inspected.connect(func(_id: String, pos: int = actual_index, kind: String = source): item_inspected.emit("phantom" if kind=="phantom" else "inventory",pos))
    pocket_cards.append(card)
   _pocket_signature=pocket_signature
  _pocket_count.text="%d / %d" % [game.inventory.size(),game.max_pocket()]
  _pocket_meter.sync(game.inventory.size(),game.max_pocket())
  for index in range(relic_cards.size()):
+  relic_cards[index].item_state=game.relics[index]
   relic_cards[index].live_note=live_state(game,game.relics[index])
+  relic_cards[index].queue_redraw()
 
 func _sync_upgrades(game: Game) -> void:
- for child in _upgrade_zone.get_children():
-  if child is TextureRect: _upgrade_zone.remove_child(child); child.queue_free()
- for index in range(game.upgrades.size()):
-  var id: String = game.upgrades[index]
-  var icon: TextureRect = UIStyle.texture(Cat.UPGRADES[id].art,UIStyle.GOLD)
-  UIStyle.place(icon,_upgrade_zone,Rect2((index%6)*36,38+int(index/6.0)*36,30,30))
-  icon.mouse_filter=Control.MOUSE_FILTER_STOP
-  icon.set_meta("item_id",id)
-  icon.mouse_entered.connect(func():
-   var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
-   if host: host._show_item_preview(id,"Owned upgrade",icon)
-  )
-  icon.mouse_exited.connect(func():
-   var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
-   if host: host._hide_item_preview(icon)
-  )
+ _owned_upgrades=game.upgrades.duplicate()
+ for child in _upgrade_zone.get_children(): _upgrade_zone.remove_child(child); child.queue_free()
+ if game.upgrades.is_empty(): return
+ var book: Button = load("res://ui/art_button.gd").new()
+ book.item_id=game.upgrades[-1]
+ book.custom_minimum_size=Vector2.ZERO
+ book.pressed.connect(func(): action_requested.emit("upgrades"))
+ UIStyle.place(book,_upgrade_zone,Rect2(0,0,134,64))
+ var art := TextureRect.new()
+ art.texture=load("res://assets/plates/voucher_"+str(game.upgrades[-1])+".png")
+ art.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+ art.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ art.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
+ art.mouse_filter=Control.MOUSE_FILTER_IGNORE
+ UIStyle.place(art,book,Rect2(0,0,96,64))
+ var count: Label = UIStyle.label(str(game.upgrades.size()),27,UIStyle.GOLD)
+ count.add_theme_font_size_override("font_size",27)
+ UIStyle.place(count,book,Rect2(104,16,30,36))
 
 func destination_rect(id: String) -> Rect2:
  var destination: Control = card_for(id)
@@ -341,8 +373,7 @@ func card_for(id: String) -> Control:
   if card.item_id==id: return card
  for index in range(pocket_cards.size()-1,-1,-1):
   if pocket_cards[index].item_id==id: return pocket_cards[index]
- for icon in _upgrade_zone.get_children():
-  if icon is TextureRect and icon.get_meta("item_id","")==id: return icon
+ if _owned_upgrades.has(id) and _upgrade_zone.get_child_count()>0: return _upgrade_zone.get_child(0)
  return null
 
 func pulse_acquired(id: String, delay: float = 0.0) -> void:
@@ -410,17 +441,7 @@ func _draw_score(value: float) -> void:
  UIStyle.fit(_score_label,64,32)
 
 static func live_state(game: Game, relic: Dictionary) -> String:
- match relic.id:
-  "monolith","compound": return "Current  x"+UIStyle.precise(relic.growth)
-  "battery": return "Stored  +"+UIStyle.precise(relic.charge)+" points"
-  "charity": return "Current  x"+UIStyle.precise(game.money.div(10).floored().plus(1))
-  "apprentice": return "Current  x"+UIStyle.precise(1+game.rune_uses*.25)+" / "+str(game.rune_uses)+" runes used"
-  "steelworks":
-   var count: int = game.cells.filter(func(tile): return tile!=null and tile.fx.get("steel",false)).size()
-   return "Current  x"+UIStyle.precise(UIStyle.Num.power(1.2,count))+" / "+str(count)+" steel tiles"
-  "feedback": return "Trigger progress  "+str(int(relic.carry))+" / 5"
-  "resonance": return "Resets each swipe"
- return ""
+ return Game.Rules.status(game,relic)
 
 func _layout_sidebar() -> void:
  var delta: float = _canvas_size.y-900
@@ -436,6 +457,7 @@ func _layout_sidebar() -> void:
  _floor.add_theme_font_size_override("font_size",54 if _in_play else 36)
  _route.position=Vector2(177,773+delta) if _in_play else Vector2(178,620)
  _options.position.y=_canvas_size.y-68
+ _workshop.position=Vector2(1024,_canvas_size.y-92) if _in_play else Vector2(28,250)
  for index in range(_sidebar_rules.size()): _sidebar_rules[index].visible=index==0 or not _in_play
 
 func adapt_canvas(dimensions: Vector2) -> void:

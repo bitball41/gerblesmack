@@ -6,6 +6,9 @@ signal reorder_requested(from_index: int, to_index: int)
 @export var item_id: String = "carbon"
 @export var motion_enabled := true
 var live_note := ""
+var item_state: Dictionary = {}
+var phantom := false
+var double_use := false
 var selected := false
 var drag_index := -1
 var _hover: Tween
@@ -74,6 +77,7 @@ func _layout() -> void:
  pivot_offset=size*Vector2(.5,.8)
  if not is_node_ready(): return
  var art_size: float = minf(192,floorf(minf(size.x-12,size.y*.7)/48)*48)
+ if art_size<32: art_size=32
  illustration.position=Vector2(roundf((size.x-art_size)/2),10)
  illustration.size=Vector2(art_size,art_size)
  rarity.visible=false
@@ -95,11 +99,19 @@ func _layout() -> void:
 func _draw() -> void:
  if item_id.is_empty(): return
  var palette: Array = UIStyle.colors(item_id)
- var edge: Color = UIStyle.GOLD if selected or scoring_active else Color(palette[0]).lightened(.35)
+ var edition: String = str(item_state.get("edition",""))
+ var edge: Color = UIStyle.GOLD if selected or scoring_active or edition=="oversaturated" else UIStyle.BLUE if edition=="unbound" or phantom else Color(palette[0]).lightened(.35)
  var rim: StyleBoxFlat = UIStyle.box(Color.TRANSPARENT,edge,9,0,0)
  rim.draw_center=false
  rim.set_border_width_all(1)
  draw_style_box(rim,Rect2(3,3,size.x-6,size.y-9))
+ if item_state.get("cursed",false):
+  draw_colored_polygon(PackedVector2Array([Vector2(size.x-15,9),Vector2(size.x-9,15),Vector2(size.x-15,21),Vector2(size.x-21,15)]),Color("d08dd8"))
+ if item_state.get("echoed",false):
+  draw_circle(Vector2(14,15),5,UIStyle.RED)
+ if double_use or phantom:
+  var badge: String = "x2" if double_use else "P"
+  draw_string(UIStyle.BODY,Vector2(8,size.y-10),badge,HORIZONTAL_ALIGNMENT_LEFT,-1,18,UIStyle.BLUE if phantom else UIStyle.GOLD)
 
 func _tilt(entered: bool) -> void:
  z_index=8 if entered else 0

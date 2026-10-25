@@ -8,10 +8,14 @@ const BUTTON: PackedScene = preload("res://scenes/ui/action_button.tscn")
 signal board_selected(id: String)
 signal page_changed(index: int)
 signal seed_changed(value: String)
-signal start_requested(id: String, run_seed: String)
+signal start_requested(id: String, run_seed: String, difficulty: String)
 signal cancel_requested
 signal navigated
 var chosen_board := "red"
+var difficulty := "normal"
+var _normal: Button
+var _cursed: Button
+var _mode_note: Label
 var page := 0
 var seed_text := ""
 var motion_enabled := true
@@ -66,7 +70,9 @@ func _button(text: String, rect: Rect2, action: Callable, color: Color = Color("
 
 func _build() -> void:
  _text("New run",Rect2(40,24,580,66),54)
- _text("Boards",Rect2(40,108,560,42),36,UIStyle.MUTED)
+ _text("Boards",Rect2(40,108,160,42),36,UIStyle.MUTED)
+ _normal=_button("Normal",Rect2(248,108,168,42),func(): _set_difficulty("normal"),Color("3c7668"))
+ _cursed=_button("Cursed",Rect2(434,108,168,42),func(): _set_difficulty("cursed"),Color("795582"))
  _thumbs=Control.new()
  _thumbs.name="BoardPortraits"
  UIStyle.place(_thumbs,self,Rect2(40,166,580,372))
@@ -98,6 +104,7 @@ func _build() -> void:
  _headline=_text("",Rect2(708,328,458,76),36,Color("326c59"),true)
  _description=_text("",Rect2(708,414,458,80),27,INK,true,true)
  _downside=_text("",Rect2(708,508,458,68),27,Color("a14e43"),true,true)
+ _mode_note=_text("",Rect2(708,572,458,28),27,Color("775483"),false,true)
  _text("Starts with",Rect2(708,600,132,32),27,Color("586c6e"),false,true)
  _loadout=Control.new()
  UIStyle.place(_loadout,self,Rect2(844,594,322,40))
@@ -111,15 +118,15 @@ func _build() -> void:
  seed_field.add_theme_font_size_override("font_size",36)
  UIStyle.place(seed_field,self,Rect2(404,698,220,60))
  seed_field.text_changed.connect(func(value: String): seed_text=value; seed_changed.emit(value))
- seed_field.text_submitted.connect(func(_value: String): start_requested.emit(chosen_board,seed_text))
- _button("Start run",Rect2(832,698,360,60),func(): start_requested.emit(chosen_board,seed_text),Color("418468"))
+ seed_field.text_submitted.connect(func(_value: String): start_requested.emit(chosen_board,seed_text,difficulty))
+ _button("Start run",Rect2(832,698,360,60),func(): start_requested.emit(chosen_board,seed_text,difficulty),Color("418468"))
 
 func _fill_portraits() -> void:
  for child in _thumbs.get_children(): _thumbs.remove_child(child); child.queue_free()
- var begin: int = page*10
- var count: int = mini(10,Cat.BOARDS.size()-begin)
+ var definitions: Array = Cat.boards_on_page(page)
+ var count: int = definitions.size()
  for local_index in range(count):
-  var definition: Dictionary = Cat.BOARDS[begin+local_index]
+  var definition: Dictionary = definitions[local_index]
   var option: Button = OPTION.new()
   option.definition=definition
   option.board_id=definition.id
@@ -129,19 +136,19 @@ func _fill_portraits() -> void:
   UIStyle.place(option,_thumbs,Rect2((local_index%5)*118,y,108,168))
   option.pressed.connect(func(id: String = definition.id): _select(id))
   option.focus_entered.connect(func(id: String = definition.id): _select(id))
- _page_label.text="Page %d / 2" % (page+1)
+ _page_label.text="Page %d / 3" % (page+1)
  _previous.disabled=page==0
- _next_page.disabled=page==1
+ _next_page.disabled=page==2
 
 func _set_page(index: int) -> void:
- page=clampi(index,0,1)
+ page=clampi(index,0,2)
  page_changed.emit(page)
  _fill_portraits()
 
 func _random_board() -> void:
  var definition: Dictionary = Cat.BOARDS[_visual_rng.randi_range(0,Cat.BOARDS.size()-1)]
  var index: int = Cat.BOARDS.find(definition)
- if int(index/10.0)!=page: _set_page(int(index/10.0))
+ if Cat.board_page(definition.id)!=page: _set_page(Cat.board_page(definition.id))
  _select(definition.id)
 
 func _select(id: String, animate: bool = true) -> void:
@@ -151,14 +158,18 @@ func _select(id: String, animate: bool = true) -> void:
  var selected: Dictionary = Cat.board(id)
  var preview := Game.new()
  preview.persist_enabled=false
- preview.new_run(id,"BOARD-PREVIEW")
+ preview.new_run(id,"BOARD-PREVIEW",difficulty)
  hero.texture=UIStyle.sprite("board_"+id)
  _accent.color=Color(selected.color)
- _name.text=selected.name+" board"
+ _name.text=selected.name
+ _name.add_theme_font_size_override("font_size",54 if UIStyle.BODY.get_string_size(selected.name,HORIZONTAL_ALIGNMENT_LEFT,-1,54).x<=312 else 36)
  _headline.text=UIStyle.readable(selected.headline)
  _description.text=UIStyle.readable(selected.desc)
  _downside.text=UIStyle.readable(str(selected.get("downside","")))
- _number.text="Board %02d / 15" % [Cat.BOARDS.find(selected)+1]
+ _number.text="Board %02d / %d" % [Cat.BOARDS.find(selected)+1,Cat.BOARDS.size()]
+ _mode_note.text="No Curse." if difficulty=="normal" else "Cursed relics x1.5. Curse raises gate targets."
+ _normal.modulate=Color.WHITE if difficulty=="normal" else Color(.7,.7,.7)
+ _cursed.modulate=Color.WHITE if difficulty=="cursed" else Color(.7,.7,.7)
  var values: Array = [str(preview.hp),str(preview.moves),"$"+preview.money.fmt(),str(preview.max_relics())]
  for index in range(4): _stats[index].text=values[index]
  for option in _thumbs.get_children(): option.selected=option.board_id==id; option.queue_redraw()
@@ -185,6 +196,11 @@ func _select(id: String, animate: bool = true) -> void:
   hero.modulate=Color(1.25,1.16,1.02)
   _change=create_tween()
   _change.tween_property(hero,"modulate",Color.WHITE,.16)
+
+func _set_difficulty(value: String) -> void:
+ difficulty=value
+ _select(chosen_board,false)
+ navigated.emit()
 
 func _focus_initial() -> void:
  if not is_inside_tree(): return

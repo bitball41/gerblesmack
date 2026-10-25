@@ -120,11 +120,11 @@ func run() -> void:
  shop_state=ui.g.export_run()
  ui._show_new_run()
  var catalog_ids: Array[String] = []
- for page in range(2):
+ for page in range(3):
   ui.run_selector._set_page(page)
-  check(ui.run_selector._page_label.text=="Page %d / 2" % (page+1),"board pages use plain numbered navigation")
+  check(ui.run_selector._page_label.text=="Page %d / 3" % (page+1),"board pages use plain numbered navigation")
   for option in ui.run_selector._thumbs.get_children(): catalog_ids.append(option.board_id)
- check(catalog_ids.size()==15 and catalog_ids==Game.Cat.BOARDS.map(func(board): return board.id),"both pages show every board once in catalog order")
+ check(catalog_ids.size()==25 and catalog_ids==Game.Cat.BOARDS.map(func(board): return board.id),"all pages show every board once in catalog order")
  ui.run_selector._select("archivist",false)
  ui.run_selector.seed_field.text="PAGES"
  ui.run_selector.seed_field.text_changed.emit("PAGES")

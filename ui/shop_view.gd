@@ -1,5 +1,4 @@
 extends Control
-## Open tabletop: compact offers, contextual purchase, one floor upgrade.
 const UIStyle = preload("res://ui/skin.gd")
 const Cat = preload("res://scripts/catalog.gd")
 const Game = preload("res://scripts/game.gd")
@@ -10,7 +9,7 @@ signal buy_requested(id: String)
 signal item_inspected(id: String)
 signal upgrade_inspected(id: String, source: Control)
 signal reroll_requested
-signal pack_requested
+signal pack_requested(slot: int)
 signal heal_requested
 signal next_requested
 var motion_enabled := true
@@ -19,6 +18,9 @@ var offers: Array[Dictionary] = []
 var _next_round: Button
 var _reroll: Button
 var _heal: Button
+var _more: Button
+var _market_page := 0
+var _game: Game
 var _specials: Control
 var _special_signature := ""
 var _sources: Dictionary = {}
@@ -32,8 +34,13 @@ func _ready() -> void:
  wallet=WALLET.instantiate()
  wallet.visible=false
  add_child(wallet)
- _next_round=_button("Next\nround",Rect2(20,74,144,86),func(): next_requested.emit(),Color("bd594c"),null,30)
- _reroll=_button("Reroll\n$3",Rect2(20,180,144,86),func(): reroll_requested.emit(),Color("328a69"),null,30)
+ _next_round=_button("Next\nround",Rect2(20,74,144,86),func(): next_requested.emit(),Color("bd594c"))
+ _reroll=_button("Reroll\n$3",Rect2(20,180,144,86),func(): reroll_requested.emit(),Color("328a69"))
+ _more=_button("Offers >",Rect2(20,290,144,48),func():
+  _market_page=(_market_page+1)%maxi(1,int(ceil(_game.shop_offers.size()/4.0)))
+  sync(_game)
+ ,Color("425c69"))
+ _more.hide()
  _specials=Control.new()
  UIStyle.place(_specials,self,Rect2(20,400,856,160))
  for index in range(4):
@@ -42,7 +49,6 @@ func _ready() -> void:
   offers.append({"id":"__unset","root":slot,"buy":null,"card":null})
 
 func _draw() -> void:
- # One open field; alignment groups the cards without another panel.
  draw_rect(Rect2(20,382,856,2),Color("78928a65"))
 
 func _text(text: String, rect: Rect2, font_size: int, color: Color = UIStyle.CREAM, parent: Node = null, wrap: bool = false) -> Label:
@@ -50,13 +56,13 @@ func _text(text: String, rect: Rect2, font_size: int, color: Color = UIStyle.CRE
  UIStyle.place(label,self if parent==null else parent,rect)
  return label
 
-func _button(text: String, rect: Rect2, action: Callable, color: Color = Color("438368"), parent: Node = null, font_size: int = 32, item: bool = false) -> Button:
- var button: Button = load("res://ui/item_button.gd").new() if item else BUTTON.instantiate()
+func _button(text: String, rect: Rect2, action: Callable, color: Color, parent: Node = null) -> Button:
+ var button: Button = BUTTON.instantiate()
  button.custom_minimum_size=Vector2.ZERO
  button.text=text
  button.base_color=color
  button.edge_color=color.lightened(.25)
- button.display_size=font_size
+ button.display_size=32
  button.padding=5
  button.motion_enabled=motion_enabled
  button.pressed.connect(action)
@@ -64,26 +70,42 @@ func _button(text: String, rect: Rect2, action: Callable, color: Color = Color("
  return button
 
 func sync(game: Game) -> void:
+ _game=game
  wallet.motion_enabled=motion_enabled
  wallet.set_amount(game.money)
  _reroll.text="Reroll\n$%d" % game.reroll_cost()
  _reroll.disabled=game.money.cmp(game.reroll_cost())<0
+ _market_page=mini(_market_page,maxi(0,int(ceil(game.shop_offers.size()/4.0))-1))
  for index in range(4):
-  var id: String = game.shop_offers[index] if index<game.shop_offers.size() else ""
+  var actual: int = _market_page*4+index
+  var id: String = game.shop_offers[actual] if actual<game.shop_offers.size() else ""
   var slot: Dictionary = offers[index]
   if slot.id!=id: _fill_offer(index,id)
   if id!="" and is_instance_valid(slot.buy):
    slot.buy.disabled=not game.can_grant(id) or game.money.cmp(game.cost_for(id))<0
    slot.root.get_node("Price").text="$%d" % game.cost_for(id)
- var signature: String = str([game.shop_upgrade,game.shop_pack_bought,game.shop_heal_bought,game.hp,game.max_hp,game.floor_num])
+   slot.card.item_state=game.f.offer_tags.get(id,{})
+   var preview: Dictionary = {"id":id,"growth":UIStyle.Num.new(1),"charge":0,"carry":0}
+   preview.merge(slot.card.item_state,true)
+   slot.card.live_note=Game.Rules.status(game,preview) if Cat.RELICS.has(id) else ""
+   if game.f.locked_offer==id: slot.card.live_note+="\nLocked through rerolls"
+   slot.card.queue_redraw()
+ var signature: String = str([game.shop_upgrade,game.f.pack_offers,game.shop_heal_bought,game.hp,game.max_hp,game.floor_num])
  if signature!=_special_signature:
   _fill_specials(game)
   _special_signature=signature
+ _more.visible=game.shop_offers.size()>4
+ _more.text="Offers >" if _market_page==0 else "< Offers"
+ _more.position.y=332 if is_instance_valid(_heal) else 290
  if is_instance_valid(_heal): _heal.disabled=game.money.cmp(game.price(5))<0
  for child in _specials.find_children("*","Button",true,false):
-  var id: String = str(child.get_meta("purchase_id",""))
-  var cost: int = int(child.get_meta("cost",0))
-  child.disabled=game.money.cmp(cost)<0 or (id!="" and not game.can_grant(id))
+  if child.has_meta("pack_slot"):
+   var slot: int = int(child.get_meta("pack_slot"))
+   child.disabled=game.money.cmp(Game.Market.pack_cost(game,slot))<0 or not Game.Market.has_pack_room(game,slot)
+  else:
+   var id: String = str(child.get_meta("purchase_id",""))
+   var cost: int = int(child.get_meta("cost",0))
+   child.disabled=game.money.cmp(cost)<0 or (id!="" and not game.can_grant(id))
 
 func _select_offer(index: int) -> void:
  item_inspected.emit(str(offers[index].id))
@@ -96,10 +118,7 @@ func _fill_offer(index: int, id: String) -> void:
  slot.buy=null
  slot.card=null
  if selected_offer==index: selected_offer=-1
- if id=="":
-  var sold: Label = _text("SOLD",Rect2(8,118,120,40),20,Color("7f9a8e"),root)
-  sold.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-  return
+ if id=="": return
  var card: Control = CARD.instantiate()
  card.item_id=id
  card.motion_enabled=motion_enabled
@@ -110,7 +129,7 @@ func _fill_offer(index: int, id: String) -> void:
  var price: Label = _text("",Rect2(0,2,164,38),30,UIStyle.GOLD,root)
  price.name="Price"
  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- slot.buy=_button("BUY",Rect2(0,262,164,46),func(): buy_requested.emit(id),Color("328a69"),root,20)
+ slot.buy=_button("BUY",Rect2(0,262,164,46),func(): buy_requested.emit(id),Color("328a69"),root)
  slot.buy.name="Buy"+id.capitalize()
  slot.buy.visible=false
  if motion_enabled:
@@ -138,29 +157,34 @@ func _fill_specials(game: Game) -> void:
   UIStyle.place(art,ticket,Rect2(0,40,160,112))
   var price := _text("$%d" % game.cost_for(id),Rect2(0,0,160,36),30,UIStyle.GOLD,ticket)
   price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-  _text(Cat.name_for(id),Rect2(176,40,156,120),36,UIStyle.CREAM,ticket,true)
+  var name_label: Label = _text(Cat.name_for(id),Rect2(176,40,156,120),36,UIStyle.CREAM,ticket,true)
+  for word in Cat.name_for(id).split(" "):
+   if UIStyle.BODY.get_string_size(word,HORIZONTAL_ALIGNMENT_LEFT,-1,36).x>156: name_label.add_theme_font_size_override("font_size",27)
   _sources[id]=ticket
  else: _text("REDEEMED",Rect2(0,80,300,36),27,Color("7f9a8e"),_specials)
- if not game.shop_pack_bought:
-  var cost: int = 0 if game.b().get("free_packs",false) else game.price(5)
+ for index in range(game.f.pack_offers.size()):
+  var offer: Dictionary = game.f.pack_offers[index]
+  var x: float = 500+index*188
+  if offer.bought:
+   var opened := _text("OPENED",Rect2(x,80,168,36),27,Color("7f9a8e"),_specials)
+   opened.add_theme_font_size_override("font_size",27)
+   opened.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+   continue
   var pack: Button = load("res://ui/art_button.gd").new()
   pack.custom_minimum_size=Vector2.ZERO
-  pack.pressed.connect(func(): pack_requested.emit())
-  UIStyle.place(pack,_specials,Rect2(624,0,232,160))
-  pack.set_meta("cost",cost)
+  pack.pressed.connect(func(slot: int = index): pack_requested.emit(slot))
+  UIStyle.place(pack,_specials,Rect2(x,0,168,160))
+  pack.set_meta("pack_slot",index)
   var art := TextureRect.new()
-  art.texture=preload("res://assets/plates/supply_pack.png")
+  art.texture=load("res://assets/plates/pack_"+str(offer.type)+"_"+str(offer.size).to_lower()+".png")
   art.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
   art.mouse_filter=Control.MOUSE_FILTER_IGNORE
-  UIStyle.place(art,pack,Rect2(52,32,128,128))
-  var price := _text("$%d" % cost,Rect2(0,0,232,36),30,UIStyle.GOLD,pack)
+  UIStyle.place(art,pack,Rect2(20,32,128,128))
+  var price := _text("$%d" % Game.Market.pack_cost(game,index),Rect2(0,0,168,36),30,UIStyle.GOLD,pack)
   price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-  _sources["pack"]=pack
- else: _text("OPENED",Rect2(624,80,232,36),27,Color("7f9a8e"),_specials)
+  _sources["pack"+str(index)]=pack
  if game.hp<game.max_hp and not game.shop_heal_bought:
-  _heal=_button("Heal $%d" % game.price(5),Rect2(20,290,144,60),func(): heal_requested.emit(),Color("9a5665"),self,27)
-  _heal.set_meta("cost",game.price(5))
-
+  _heal=_button("Heal $%d" % game.price(5),Rect2(20,278,144,48),func(): heal_requested.emit(),Color("9a5665"))
 
 func source_rect(id: String) -> Rect2:
  for slot in offers:

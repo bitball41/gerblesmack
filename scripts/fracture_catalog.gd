@@ -40,7 +40,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#c09b45",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "copper_coil": {
@@ -68,7 +68,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#88a758",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "shipping_crate": {
@@ -110,7 +110,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#6e9269",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "cuckoo_clock": {
@@ -152,7 +152,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#af8050",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "body_double": {
@@ -180,7 +180,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#549783",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "pandora": {
@@ -222,7 +222,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#638ea3",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "clone_vat": {
@@ -236,7 +236,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#6b9b9a",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "guillotine": {
@@ -334,7 +334,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#789252",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "conductor": {
@@ -348,7 +348,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#b1914f",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "perpetuum": {
@@ -390,7 +390,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#a28849",
-   "#fff3d5"
+   "#1d2d35"
   ]
  },
  "paradox": {
@@ -418,7 +418,7 @@ const RELICS = {
   "type": "joker",
   "colors": [
    "#538f96",
-   "#fff3d5"
+   "#1d2d35"
   ]
  }
 }

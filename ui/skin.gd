@@ -129,7 +129,9 @@ static func pixel_font_size(requested: int) -> int:
 
 static func precise(value) -> String:
  var n = Num.of(value)
- return str(snappedf(n.to_float(),.001)) if n.e<5 else n.fmt()
+ if n.e>=5: return n.fmt()
+ var amount: float = snappedf(n.to_float(),.001)
+ return str(int(amount)) if amount==floorf(amount) else str(amount)
 
 static func item_tooltip(title_text: String, description: String, rarity: String, live: String = "", _native_popup: bool = false) -> PanelContainer:
  var result: PanelContainer = panel(Color("e9e3cf"),Color("fbf4de"),12)
@@ -161,7 +163,7 @@ static func item_tooltip(title_text: String, description: String, rarity: String
   text.add_theme_font_size_override("font_size",27)
   state.add_child(text)
   body.add_child(state)
- var badge: Label = label(rarity,32,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("986047"),true)
+ var badge: Label = label(rarity,32,Color("376a85") if rarity=="Common" else Color("467653") if rarity=="Uncommon" else Color("946c20") if rarity=="Legendary" else Color("795088") if rarity=="Fracture" else Color("986047"),true)
  badge.add_theme_font_size_override("font_size",27)
  body.add_child(badge)
  return result

@@ -35,6 +35,7 @@ func run() -> void:
  check(title.size.x>=500,"title does not wrap into a column")
  for definition in Game.Cat.BOARDS:
   ui.start_run(definition.id,"UI-TEST")
+  if not ui.g.f.nomad_choices.is_empty(): ui.g.Actions.choose_nomad(ui.g,ui.g.f.nomad_choices[0])
   ui._begin_gate()
   await process_frame
   check(ui.run_view.board.size.x==420,"board fits "+definition.id)
@@ -149,6 +150,7 @@ func run() -> void:
  check(ui.run_view.card_for("mercy").modulate.a==1.0,"acquisition reveals its destination after arrival")
  var stale_flights: Array = ui.effects.get_children().filter(func(node): return node is Button and node.has_meta("transient"))
  check(stale_flights.is_empty(),"card flights clean themselves up")
+ ui.g.f.pack_offers[0]={"type":"standard","size":"Standard","bought":false}
  ui._open_shop_pack()
  await process_frame
  check(ui.overlay.view_id=="pack" and not ui.overlay.closable,"pack reveal preserves the pending choice")

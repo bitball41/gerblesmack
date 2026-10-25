@@ -1,4 +1,5 @@
 extends Control
+const FractureMenus = preload("res://ui/fracture_menus.gd")
 const UIStyle = preload("res://ui/skin.gd")
 const Game = preload("res://scripts/game.gd")
 const Cat = preload("res://scripts/catalog.gd")
@@ -13,6 +14,8 @@ const PACK_SCENE: PackedScene = preload("res://scenes/ui/pack.tscn")
 @export_range(1,4) var buffered_input_limit := 3
 var g: Game = Game.new()
 var chosen_board := "red"
+var chosen_difficulty := "normal"
+var awaiting_source := "pocket"
 var board_page := 0
 var seed_input := ""
 var sound_on := true
@@ -87,7 +90,8 @@ func _ready() -> void:
  has_run=g.load_run()
  if has_run:
   chosen_board=g.board_id
-  board_page=int(Cat.BOARDS.find(Cat.board(chosen_board))/10.0)
+  chosen_difficulty=str(g.f.difficulty)
+  board_page=Cat.board_page(chosen_board)
  _update_record()
  _show_home()
  get_viewport().size_changed.connect(_layout_canvas)
@@ -232,6 +236,8 @@ func _run_action(action: String) -> void:
  match action:
   "menu": _show_settings()
   "board": _show_board()
+  "workshop": _show_workshop()
+  "upgrades": FractureMenus.show_upgrades(self)
   "new": _show_new_run()
   "help": _show_help()
   "phase":
@@ -258,7 +264,7 @@ func _continue_run() -> void:
  elif g.phase=="gates": _show_gates()
  elif g.phase in ["reward","failed","over"]: _show_result()
 
-func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -> void:
+func start_run(board_id: String = chosen_board, run_seed: String = seed_input, difficulty: String = chosen_difficulty) -> void:
  _action_epoch+=1
  scoring_sequence.cancel()
  run_view.cancel_score_display()
@@ -269,10 +275,11 @@ func start_run(board_id: String = chosen_board, run_seed: String = seed_input) -
  awaiting_spell=-1
  first_target=-1
  effects.clear_transients(true)
- g.new_run(board_id,run_seed.strip_edges().to_upper())
+ g.new_run(board_id,run_seed.strip_edges().to_upper(),difficulty)
+ chosen_difficulty=difficulty
  g.queue_gate()
  run_view.wallet.reset(g.money)
- board_page=int(Cat.BOARDS.find(Cat.board(board_id))/10.0)
+ board_page=Cat.board_page(board_id)
  chosen_board=board_id
  has_run=true
  home_active=false
@@ -290,8 +297,8 @@ func _render() -> void:
  else: _refresh_run()
 
 func _target_text() -> String:
- if awaiting_spell<0 or awaiting_spell>=g.inventory.size(): return ""
- var id: String = g.inventory[awaiting_spell]
+ var id: String = g.consumable_at(awaiting_spell,awaiting_source)
+ if id=="" or not Cat.SPELLS.has(id): return ""
  var action: String = Cat.SPELLS[id].action
  return Cat.name_for(id)+": "+("choose an empty cell" if first_target>=0 or action=="spawn" else "choose a tile")
 
@@ -423,6 +430,7 @@ func _inspect_item(kind: String, index: int) -> void:
  var id: String = ""
  if kind=="relic" and index>=0 and index<g.relics.size(): id=g.relics[index].id
  elif kind=="inventory" and index>=0 and index<g.inventory.size(): id=g.inventory[index]
+ elif kind=="phantom": id=g.consumable_at(index,"phantom")
  if id=="": return
  _show_context(id,kind,index)
 
@@ -454,16 +462,20 @@ func _show_info(id: String, kind: String = "collection", index: int = -1, return
   if g.phase in ["play","shop"]: info.add_child(_button("USE",func(): _select_item(index),Color("438c75"),Color("84bd9c")))
   if g.phase=="shop": info.add_child(_button("SELL  ·  $%d" % maxi(1,int(data.cost/2.0)),func(): _sell("inventory",index),UIStyle.RED,Color("f4aa86")))
 
-func _select_item(index: int) -> void:
+func _select_item(index: int, source: String = "pocket") -> void:
  _settle_move()
- if index<0 or index>=g.inventory.size(): return
- var id: String = g.inventory[index]
+ var id: String = g.consumable_at(index,source)
+ if id=="": return
+ if Cat.FRACTURES.has(id):
+  FractureMenus.fracture_target(self,index,source)
+  return
  if Cat.RUNES.has(id) or id in ["mercy","hourglass"]:
-  if not g.use_item(index):
+  if not g.use_item(index,-1,-1,source):
    _toast("Life is full." if id=="mercy" else "That card cannot be used here.")
    return
   effects.play("buy")
   awaiting_spell=-1
+  awaiting_source="pocket"
   first_target=-1
   _refresh_run()
   if g.phase=="shop": _show_shop()
@@ -471,6 +483,7 @@ func _select_item(index: int) -> void:
  else:
   if g.phase!="play": _toast("Use board Spells during a gate."); return
   awaiting_spell=index
+  awaiting_source=source
   first_target=-1
   overlay.close()
   _refresh_run(false)
@@ -478,8 +491,8 @@ func _select_item(index: int) -> void:
 func _tile_click(index: int) -> void:
  if home_active or overlay.visible or moving: return
  if awaiting_spell<0: return
- if awaiting_spell>=g.inventory.size(): _cancel_target(); return
- var id: String = g.inventory[awaiting_spell]
+ var id: String = g.consumable_at(awaiting_spell,awaiting_source)
+ if id=="": _cancel_target(); return
  if id=="twins" and first_target<0:
   if g.cells[index]!=null:
    first_target=index
@@ -488,7 +501,7 @@ func _tile_click(index: int) -> void:
    run_view.board.queue_redraw()
   else: _toast("Choose an occupied source tile.")
   return
- if g.use_item(awaiting_spell,first_target if first_target>=0 else index,index if first_target>=0 else -1):
+ if g.use_item(awaiting_spell,first_target if first_target>=0 else index,index if first_target>=0 else -1,awaiting_source):
   awaiting_spell=-1
   first_target=-1
   effects.play("buy")
@@ -497,6 +510,7 @@ func _tile_click(index: int) -> void:
  else: _toast("Choose a valid tile. Escape cancels the Spell.")
 
 func _cancel_target() -> void:
+ awaiting_source="pocket"
  awaiting_spell=-1
  first_target=-1
  run_view.board.selected_cell=-1
@@ -521,6 +535,7 @@ func _show_result() -> void:
   if int(summary.get("banked",0))>0: col.add_child(_paragraph("%d moves banked for the next gate." % summary.banked))
  if g.phase!="over": col.add_child(_button("CONTINUE ENDLESS  →" if ending else "GO TO SHOP  →",func(): g.open_shop(); _refresh_run(false); _show_shop(),Color("438c75"),Color("84bd9c"),25))
  else: col.add_child(_button("NEW RUN",_show_new_run,Color("cf8050"),Color("f6c991"),25))
+ if g.has_relic("paradox") and not g.f.paradox_used and not g.f.rewind.is_empty(): col.add_child(_button("REWIND LAST SWIPE",func(): _workshop_commit("rewind"),Color("745884")))
  col.add_child(_button("VIEW BOARD",func(): overlay.close()))
 
 func _show_shop() -> void:
@@ -579,8 +594,8 @@ func _reroll_shop() -> void:
  _refresh_run(false)
  _show_shop()
 
-func _open_shop_pack() -> void:
- if not g.pack_open(): _toast("Not enough money."); return
+func _open_shop_pack(slot: int = 0) -> void:
+ if not g.pack_open(slot): _toast("Check your balance and available slots."); return
  effects.play("pack")
  _refresh_run(false)
  _show_pack()
@@ -618,14 +633,19 @@ func _show_pack() -> void:
  overlay.panel.position.x=288
  _shop_shade()
  var pack: Control = PACK_SCENE.instantiate()
+ pack.game=g
  pack.choices=g.pack_choices.duplicate()
+ pack.type=str(g.f.pack_type)
+ pack.pack_size=str(g.f.pack_size)
+ pack.remaining=int(g.f.pack_remaining)
+ pack.tags=g.f.pack_tags.duplicate(true)
  pack.motion_enabled=not reduced_motion
  for id in pack.choices: pack.available[id]=g.can_grant(id)
  host.add_child(pack)
  pack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  pack.picked.connect(_pick_pack)
  pack.item_inspected.connect(func(id: String, source: Control): _inspect_pack(id,source,pack))
- pack.skipped.connect(func(): g.pack_choices=[]; g.save_run(); _show_shop())
+ pack.skipped.connect(func(): g.Market.skip_pack(g); _show_shop())
 
 func _pick_pack(id: String) -> void:
  var source := Rect2(638,260,162,216)
@@ -649,6 +669,7 @@ func _show_new_run() -> void:
  overlay.panel.add_theme_stylebox_override("panel",UIStyle.box(Color("17373ef5"),Color("4a696b"),16,0,0))
  run_selector=RUN_SELECT_SCENE.instantiate()
  run_selector.chosen_board=chosen_board
+ run_selector.difficulty=chosen_difficulty
  run_selector.page=board_page
  run_selector.seed_text=seed_input
  run_selector.motion_enabled=not reduced_motion
@@ -675,10 +696,13 @@ func _show_help() -> void:
  var col: VBoxContainer = _open("HOW TO PLAY","help",Vector2(900,720))
  for section in [
   ["SLIDE. MERGE. BUILD.","WASD, arrow keys, or swipe. Equal tiles merge once per move. An invalid move costs nothing. Tiles have no maximum value."],
-  ["FLOORS & GATES","Beat the target before your moves run out. Three gates make a floor. Targets triple each floor. Clear eight floors, then continue in endless."],
+  ["FLOORS & GATES","Beat the target before your moves run out. Three gates make a floor. Targets triple through floor eight. Endless adds an increasingly steep multiplier after that. Clear eight floors to unlock it."],
   ["LIFE & RETRIES","Missing a gate costs 1 Life and clears your two smallest tiles. Visit the shop, then retry. If the board locks, rescue it with a Spell or take a hit."],
   ["YOUR RELIC ENGINE","Relics resolve left to right. Drag them to reorder, inspect one for arrow buttons, or use Alt + Left/Right while focused. Flat bonuses and multipliers apply at their position. Repeats feed later Relics."],
   ["ENHANCED TILES","Gold pays $2 per merge. Glass scores ×2 but has a 25% shatter chance. Each Steel tile adds ×1.25 to every merge. An Echo mark runs scoring twice. Enhancements pass to merged tiles."],
+  ["FRACTURE","25 boards, 54 Relics, 30 upgrades, and Fracture consumables. Two shop packs independently draw Standard, Reliquary, Grimoire, Sigil, or Fracture. Jumbo shows five choices; Mega lets you keep two. Workshop abilities and reserve storage appear when unlocked."],
+  ["EDITIONS & CURSE","Unbound Relics use no slot. Oversaturated doubles numerical benefits. Cursed is an independent x1.5 boost in Cursed difficulty. Cursed starts at 2 Curse; taking a Cursed Relic adds 2, each Guardian attempt adds 1. Targets gain x1.15 per Curse; every 5 Curse removes one starting move. Normal has no Curse."],
+  ["SCORING SPEED","1x, 2x, and 4x show Relics resolving in order, including retriggers. 8x skips the scoring sequence. Reduced motion also resolves directly. Change Game Speed in Options."],
   ["SPELLS, RUNES & UPGRADES","Inspect a pocket card to use it. Duplicate needs a source then an empty destination. Runes improve natural spawns. Upgrades last for the run. Space toggles purchased autoplay; manual input stops it. Escape cancels targeting or opens the menu."]
  ]:
   col.add_child(UIStyle.label(section[0],24,UIStyle.GOLD,true))
@@ -690,9 +714,9 @@ func _show_collection(category: String = "") -> void:
  var col: VBoxContainer = _open("COLLECTION","collection",Vector2(1050,755))
  var tabs: HBoxContainer = UIStyle.row(10)
  col.add_child(tabs)
- for entry in [["relic","RELICS"],["spell","SPELLS"],["rune","RUNES"],["upgrade","UPGRADES"]]:
+ for entry in [["relic","RELICS"],["spell","SPELLS"],["rune","RUNES"],["upgrade","UPGRADES"],["fracture","FRACTURES"]]:
   tabs.add_child(_button(entry[1],func(value: String = entry[0]): _show_collection(value),Color("345a66"),UIStyle.GOLD if entry[0]==category else Color("7b9eaa")))
- var pool: Dictionary = Cat.RELICS if category=="relic" else Cat.SPELLS if category=="spell" else Cat.RUNES if category=="rune" else Cat.UPGRADES
+ var pool: Dictionary = Cat.RELICS if category=="relic" else Cat.SPELLS if category=="spell" else Cat.RUNES if category=="rune" else Cat.FRACTURES if category=="fracture" else Cat.UPGRADES
  var grid := GridContainer.new()
  grid.columns=5
  grid.add_theme_constant_override("h_separation",16)
@@ -899,7 +923,7 @@ func _inspect_offer(id: String) -> void:
  for slot in shop_view.offers:
   if slot.id==id: source=slot.card; break
  if not is_instance_valid(source): return
- var col: VBoxContainer = _pin(id,"offer:"+id,source,"Cost $%d" % g.cost_for(id))
+ var col: VBoxContainer = _pin(id,"offer:"+id,source,source.live_note+"\nCost $%d" % g.cost_for(id))
  if col==null: return
  for index in range(shop_view.offers.size()):
   var slot: Dictionary = shop_view.offers[index]
@@ -908,6 +932,10 @@ func _inspect_offer(id: String) -> void:
    if is_instance_valid(slot.buy): slot.buy.visible=true
  if not g.can_grant(id): col.add_child(_paragraph("No available slot, or already owned."))
  elif g.money.cmp(g.cost_for(id))<0: col.add_child(_paragraph("Not enough money."))
+ if g.has_upgrade("storefront2"):
+  col.add_child(_button("Unlock offer" if g.f.locked_offer==id else "Lock offer",func(): g.Market.lock_offer(g,id); _clear_context(); shop_view.sync(g),Color("745884")))
+ if g.has_relic("stowaway"):
+  col.add_child(_button("Stow this offer",func(): g.Market.stow_offer(g,id); _clear_context(); shop_view.sync(g),Color("745884")))
  col.add_child(_button("Close",_clear_context))
 
 func _inspect_upgrade(id: String, source: Control) -> void:
@@ -916,10 +944,11 @@ func _inspect_upgrade(id: String, source: Control) -> void:
  var buy: Button = _button("Buy  $%d" % g.cost_for(id),func(): _buy(id),Color("328a69"))
  buy.disabled=not g.can_grant(id) or g.money.cmp(g.cost_for(id))<0
  col.add_child(buy)
+ if g.f.floor_choices.size()>1: col.add_child(_button("Other upgrade",func(): FractureMenus.floor_upgrade(self),Color("745884")))
  col.add_child(_button("Close",_clear_context))
 
 func _inspect_pack(id: String, source: Control, pack: Control) -> void:
- var col: VBoxContainer = _pin(id,"pack:"+id,source)
+ var col: VBoxContainer = _pin(id,"pack:"+id,source,source.live_note)
  if col==null: return
  var take: Button = _button("Take",func(): _pick_pack(id),Color("328a69"))
  take.disabled=not bool(pack.available.get(id,false))
@@ -927,11 +956,12 @@ func _inspect_pack(id: String, source: Control, pack: Control) -> void:
  col.add_child(_button("Close",_clear_context))
 
 func _show_context(id: String, kind: String, index: int) -> void:
+ var card_index: int = g.inventory.size()+index if kind=="phantom" else index
  var cards: Array = run_view.relic_cards if kind=="relic" else run_view.pocket_cards
- if index<0 or index>=cards.size(): return
+ if card_index<0 or card_index>=cards.size(): return
  var data: Dictionary = Cat.data_for(id)
- var live: String = run_view.live_state(g,g.relics[index]) if kind=="relic" else ""
- var col: VBoxContainer = _pin(id,kind+":"+str(index),cards[index],live)
+ var live: String = run_view.live_state(g,g.relics[index]) if kind=="relic" else cards[card_index].live_note
+ var col: VBoxContainer = _pin(id,kind+":"+str(index),cards[card_index],live)
  if col==null: return
  if kind=="relic":
   var order: HBoxContainer = UIStyle.row(8)
@@ -939,14 +969,22 @@ func _show_context(id: String, kind: String, index: int) -> void:
   if index<g.relics.size()-1: order.add_child(_button("Right >",func(): _reorder_to(index,index+1)))
   if order.get_child_count()>0: col.add_child(order)
  elif g.phase in ["play","shop"]:
-  col.add_child(_button("Use",func(): _clear_context(); _select_item(index),Color("477eaa")))
- if g.phase=="shop":
-  var sell: Button = _button("Sell  $%d" % maxi(1,int(data.cost/2.0)),func(): _clear_context(); _sell(kind,index),Color("328a69"))
+  col.add_child(_button("Use",func(): _clear_context(); _select_item(index,"phantom" if kind=="phantom" else "pocket"),Color("477eaa")))
+  if kind!="phantom" and g.has_upgrade("satchel2"):
+   var store: Button = _button("Store in reserve",func():
+    if g.Market.put_in_reserve(g,index): _refresh_run(false)
+    else: _toast("The reserve is full.")
+   ,Color("745884"))
+   store.disabled=g.f.reserve.size()>=2
+   col.add_child(store)
+ if g.phase=="shop" and kind!="phantom":
+  var sell: Button = _button("Sell  $%d" % g.sell_value(id),func(): _clear_context(); _sell(kind,index),Color("328a69"))
   sell.name="SellSelected"
   col.add_child(sell)
  col.add_child(_button("Close",_clear_context))
 
 func _show_gates() -> void:
+ if not g.f.nomad_choices.is_empty(): FractureMenus.show_nomad(self); return
  if g.phase!="gates": return
  _clear_context()
  _stop_auto()
@@ -1027,6 +1065,7 @@ func _show_board() -> void:
  var grid: Control = preload("res://scenes/ui/board.tscn").instantiate()
  grid.name="CurrentBoardGrid"
  grid.decorative=true
+ grid.blocked_cell=int(g.f.block)
  grid.motion_enabled=false
  grid.custom_minimum_size=Vector2(416,416)
  grid.size_flags_vertical=Control.SIZE_SHRINK_CENTER
@@ -1051,3 +1090,38 @@ func _show_board() -> void:
  back.custom_minimum_size.x=260
  back.size_flags_horizontal=Control.SIZE_SHRINK_END
  col.add_child(back)
+
+func _show_workshop() -> void:
+ FractureMenus.workshop(self)
+
+func _workshop_commit(action: String, index: int = -1, other: int = -1, choice: String = "", amount: int = 0) -> void:
+ _settle_move()
+ if not g.workshop_action(action,index,other,choice,amount):
+  _toast("That action is not available right now.")
+  return
+ effects.play("buy")
+ _workshop_changed()
+
+func _workshop_changed() -> void:
+ _refresh_run()
+ if g.phase=="play": overlay.close()
+ elif g.phase=="shop": _show_shop()
+ elif g.phase=="gates": _show_gates()
+ else: _show_result()
+
+func _use_fracture(index: int, target: int, source: String = "pocket") -> void:
+ var id: String = g.consumable_at(index,source)
+ if not g.use_item(index,target,-1,source):
+  _toast("No valid transformation. Check the card's requirements.")
+  return
+ awaiting_spell=-1
+ awaiting_source="pocket"
+ effects.play("pack")
+ _workshop_changed()
+ effects.banner(Cat.name_for(id),"Transformation complete")
+
+func _show_choice_context(id: String, source: Control, label: String, callback: Callable, live: String = "") -> void:
+ var col: VBoxContainer = _pin(id,"choice:"+str(source.get_instance_id()),source,live)
+ if col==null: return
+ if callback.is_valid() and label!="": col.add_child(_button(label,callback,Color("497b68")))
+ col.add_child(_button("Close",_clear_context))
