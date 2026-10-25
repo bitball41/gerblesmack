@@ -53,7 +53,9 @@ text(d,(32,33),'?',18,INK,True)
 im.save(OUT/'supply_pack.png')
 # Each upgrade has its own paper coupon, using its existing unframed pictogram.
 source=(ROOT/'scripts/catalog.gd').read_text()
-upgrades=json.loads(source.split('const UPGRADES = ',1)[1].split('\nconst BOARDS',1)[0])
+upgrades=json.loads(source.split('const BASE_UPGRADES = ',1)[1].split('\nconst BASE_BOARDS',1)[0])
+extra=(ROOT/'scripts/fracture_catalog.gd').read_text()
+upgrades.update(json.loads(extra.split('const UPGRADES = ',1)[1].split('\nconst FRACTURES',1)[0]))
 for ident,data in upgrades.items():
  im,d=canvas((80,56))
  d.polygon([(7,4),(72,4),(76,8),(76,46),(72,50),(7,50),(3,46),(3,8)],fill=INK)

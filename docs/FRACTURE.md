@@ -35,3 +35,14 @@ Catalog assembled in `fracture_catalog.gd`: 30 new relics (54 total), 18 new upg
 Exact additional recovered corrections: Deep Pockets is the existing `charity` relic. Treasury grants no gate-clear cash INCLUDING efficiency/interest; relic, merge, and sale income still works. Erosion destroys a random relic for +1 slot. The Sovereign creates a random Legendary at 3% per generated Fracture, with no downside. Monoculture sets every tile to the smallest tile value and adds Glass+seal. Liquidation destroys four random tiles for $25. Overdraft gives +2 slots, removes all money, and blocks three cleared gates of interest. Asceticism raises every Rune track once and destroys enhanced/sealed tiles.
 
 Next: wire consumable metadata/targeting and sales hooks; validate all new models; draw new artwork; connect three board pages, Normal/Cursed selector, two pack slots and five-card Mega packs, and all Workshop choices. Browser regression and production deployment are still pending. Do not publish main until all of these are complete.
+
+
+## Implementation checkpoint 3
+
+Core models now pass 225 expansion checks, alongside all 2,057 frozen legacy checks. Coverage includes starts/save round trips for 25 boards in both difficulties; board downsides, blocking, Reactor/Twinfall, Nomad choice, editions/slots, Fracture transformations, Sovereign frequency, all pack families/sizes and pending Mega saves, Conductor/Mobius/Crown/Devourer/Paradox, reserves/Fusion/phantoms, financial contracts, and malformed-save rejection. Serialization now canonically preserves integer-valued fields through JSON.
+
+Manually specified pixel artwork is drawn for all 30 relics, 18 upgrades, 15 Fractures, 10 boards, 15 pack wrappers, and 18 new voucher variants. Editable source is `tools/build_fracture_art.py`; no image models are used. The art contact sheet was visually reviewed.
+
+Chosen tuning where the discussion was unfinished: Normal has no Curse. Cursed starts at 2 Curse; Cursed relics have x1.5 numerical power and add 2 Curse when acquired. Each Guardian attempt adds 1 Curse. Targets multiply by 1.15^Curse; each 5 Curse removes one starting move. Oversaturated is x2 and independent of Cursed. Endless adds 2^(d(d+1)/2) after floor 8, with d=floor-8. Pack-size weights are 60% Standard, 28% Jumbo, 12% Mega; each family is equally likely in each of two slots. New relic editions are 2% Unbound and 3% Oversaturated; Cursed-mode relics have a separate 30% Cursed roll. These tuning choices are implementation decisions, not falsely attributed prior approvals.
+
+Still pending: frontend flows, model edge-case expansion, full UI/browser checks, final deployment. Keep checkpointing on fracture-release; main stays on the last working public polish build until release validation passes.

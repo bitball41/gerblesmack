@@ -139,12 +139,22 @@ static func sequence(game, reverse: bool = false) -> Array:
    if relic.get("echoed",false): result.append({"relic":effect,"actor":relic,"slot":index,"only_score":true,"boost":boost})
  return result
 
+static func physical_effects(game) -> Array:
+ var effects: Array = []
+ for index in range(game.relics.size()):
+  var relic: Dictionary = game.relics[index]
+  effects.append({"relic":relic,"actor":relic,"slot":index,"boost":power(relic)})
+  if relic.id=="devourer":
+   for ability in relic.get("abilities",[]): effects.append({"relic":ability,"actor":relic,"slot":index,"boost":power(relic)*power(ability)})
+ return effects
+
 static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
  var cues: Array = []
  var tile: Dictionary = event.tile
  game.f.merges+=1
- for relic in game.relics:
-  var boost: float = power(relic)
+ for entry in physical_effects(game):
+  var relic: Dictionary = entry.relic
+  var boost: float = entry.boost
   var note := ""
   match relic.id:
    "leech":
@@ -156,10 +166,10 @@ static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
       break
    "cuckoo_clock":
     relic.carry=int(relic.carry)+1
-    if int(relic.carry)%7==0 and int(game.f.gate.get("clock",0))<2:
+    if int(relic.carry)%7==0 and int(game.f.gate.get("clock",0))<int(2*boost):
      game.f.gate.clock=int(game.f.gate.get("clock",0))+1
-     game.moves+=int(boost)
-     note="+%d move" % int(boost)
+     game.moves+=int(ceil(boost))
+     note="+%d move" % int(ceil(boost))
    "copper_coil":
     if not preview and tile.fx.get("steel",false) and not game.f.gate.get("coil",false):
      var target: int = neighbor(game,event.index)
@@ -183,7 +193,7 @@ static func on_merge(game, event: Dictionary, preview: bool = false) -> Array:
      if copy_tile(game,game.tile(int(tile.e)))>=0:
       game.f.gate.clone=true
       note="Plain copy"
-  if not note.is_empty(): cues.append({"id":relic.id,"slot":game.relics.find(relic),"text":note})
+  if not note.is_empty(): cues.append({"id":entry.actor.id,"slot":entry.slot,"text":note})
  return cues
 
 static func prevent_shatter(game, tile: Dictionary) -> bool:
@@ -261,7 +271,7 @@ static func growth_after_win(game) -> void:
  for relic in game.relics:
   var abilities: Array = relic.get("abilities",[])
   for effect in abilities:
-   if effect.id=="compound": effect.growth=Num.of(effect.growth).times(1.25*power(relic))
+   if effect.id=="compound": effect.growth=Num.of(effect.growth).times(1.25*power(relic)*power(effect))
 
 static func after_result(game, win: bool) -> void:
  game.f.phantoms=[]
@@ -304,3 +314,59 @@ static func current_factor(game, relic: Dictionary):
  elif id in ["redline","magnet","mirror","ascension"]: value=Num.new(3)
  elif id=="steelworks": value=Num.power(1.2,game.cells.filter(func(t): return t!=null and t.fx.get("steel",false)).size())
  return value.times(power(relic)) if power(relic)!=1 else value
+
+static func on_sale(game, sold: Dictionary, factor) -> void:
+ for relic in game.relics:
+  if relic.id=="ghostwriter" and sold.id in SCORING: relic.growth=Num.of(relic.growth).times(Num.of(factor).times(power(relic)))
+ if game.has_relic("recycling_bin") and not game.f.gate.get("recycling",false):
+  var given := false
+  for count in range(maxi(1,int(ceil(amount(game,"recycling_bin"))))):
+   if game.inventory.size()<game.max_pocket():
+    game._grant(game.rng.pick(Cat.RUNES.keys()))
+    given=true
+  if given: game.f.gate.recycling=true
+ if game.has_upgrade("scrapyard3") and not game.f.gate.get("scrapyard_sale",false):
+  var pool: Array = game._eligible_relics().filter(func(id): return Cat.RELICS[id].rarity in ["Common","Uncommon"] and not game.shop_offers.has(id))
+  if not pool.is_empty():
+   var id: String = game.rng.pick(pool)
+   var vacant: int = game.shop_offers.find("")
+   if vacant<0: game.shop_offers.append(id)
+   else: game.shop_offers[vacant]=id
+   game.f.offer_tags[id]={}
+   game.f.gate.scrapyard_sale=true
+
+static func valid_state(data) -> bool:
+ if data is not Dictionary: return false
+ if data.get("difficulty","normal") not in ["normal","cursed"]: return false
+ for key in ["curse","serial","extra_slots","move_penalty","no_interest","merges","spawns","pack_remaining"]:
+  var value = data.get(key,0)
+  if (value is not int and value is not float) or not is_finite(float(value)) or value<0: return false
+ var block = data.get("block",-1)
+ if (block is not int and block is not float) or not is_finite(float(block)) or block< -1 or block>15: return false
+ for key in ["gate","floor","item_tags","pack_tags","offer_tags","pending","rewind","stowed","last_used_tags"]:
+  if data.get(key,{}) is not Dictionary: return false
+ for key in ["phantoms","reserve","pack_offers","floor_choices","nomad_choices"]:
+  if data.get(key,[]) is not Array: return false
+ if data.get("reserve",[]).size()>2 or data.get("pack_offers",[]).size()>2 or data.get("pack_remaining",0)>2: return false
+ for key in ["gate","floor","pending"]:
+  for value in data.get(key,{}).values():
+   if value is not bool and ((value is not int and value is not float) or not is_finite(float(value)) or value<0): return false
+ for key in ["debt","wager","investment"]:
+  var value = data.get(key,{"__num":[0,0]})
+  if value is not Dictionary or value.get("__num") is not Array or value.__num.size()!=2: return false
+  for number in value.__num:
+   if (number is not float and number is not int) or not is_finite(float(number)): return false
+  if value.__num[0]<0: return false
+ for key in ["offer_tags","pack_tags"]:
+  for id in data.get(key,{}):
+   var tags = data[key][id]
+   if not Cat.RELICS.has(id) or tags is not Dictionary or tags.get("edition","") not in ["","unbound","oversaturated"] or tags.get("cursed",false) is not bool: return false
+ for item in data.get("phantoms",[])+data.get("reserve",[]):
+  if item is not Dictionary or item.get("tags",{}) is not Dictionary or (not Cat.SPELLS.has(item.get("id")) and not Cat.RUNES.has(item.get("id")) and not Cat.FRACTURES.has(item.get("id"))): return false
+ for pack in data.get("pack_offers",[]):
+  if pack is not Dictionary or not Cat.PACKS.has(pack.get("type")) or pack.get("size") not in ["Standard","Jumbo","Mega"] or pack.get("bought") is not bool: return false
+ for id in data.get("floor_choices",[]):
+  if not Cat.UPGRADES.has(id): return false
+ for id in data.get("nomad_choices",[]):
+  if not Cat.RELICS.has(id): return false
+ return true

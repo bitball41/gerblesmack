@@ -59,7 +59,7 @@ static func open_pack(game, slot: int = 0) -> bool:
  if game.phase!="shop" or not game.pack_choices.is_empty() or slot<0 or slot>=game.f.pack_offers.size(): return false
  var offer: Dictionary = game.f.pack_offers[slot]
  var cost: int = pack_cost(game,slot)
- var available: Array = pool(game,offer.type)
+ var available: Array = pool(game,offer.type).filter(func(id): return game.can_grant(id))
  if offer.bought or available.is_empty() or game.money.cmp(cost)<0: return false
  game.money=game.money.minus(cost)
  offer.bought=true
