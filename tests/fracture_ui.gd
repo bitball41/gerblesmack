@@ -54,10 +54,9 @@ func run() -> void:
  await process_frame
  check(ui.shop_view._sources.has("pack0") and ui.shop_view._sources.has("pack1"),"two actual pack controls appear in the shop")
  check(ui.shop_view.offers[0].card.item_state.get("edition","")=="oversaturated","offer displays its real edition metadata")
- ui.shop_view._more.pressed.emit()
- check(ui.shop_view.offers[0].id=="mobius","Storefront extra offer is reachable without shrinking cards")
- ui.shop_view._more.pressed.emit()
- check(ui.shop_view.offers[0].id=="handbrake","offer paging returns to original page")
+ check(ui.shop_view.offers.size()==5 and ui.shop_view.offers[4].id=="mobius","Storefront extra offer is visible alongside all original offers")
+ check(ui.shop_view.offers.all(func(slot): return slot.root.visible),"all shop offers are visible without paging")
+ check(ui.shop_view.offers[4].root.position.x+ui.shop_view.offers[4].root.size.x<=876,"extra offer stays within shop bounds")
  ui.shop_view._select_offer(0)
  var lock: Button=button(ui.context_panel,"Lock offer")
  check(lock!=null,"Storefront II exposes contextual locking")

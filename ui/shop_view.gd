@@ -18,8 +18,6 @@ var offers: Array[Dictionary] = []
 var _next_round: Button
 var _reroll: Button
 var _heal: Button
-var _more: Button
-var _market_page := 0
 var _game: Game
 var _specials: Control
 var _special_signature := ""
@@ -36,11 +34,6 @@ func _ready() -> void:
  add_child(wallet)
  _next_round=_button("Next\nround",Rect2(20,74,144,86),func(): next_requested.emit(),Color("bd594c"))
  _reroll=_button("Reroll\n$3",Rect2(20,180,144,86),func(): reroll_requested.emit(),Color("328a69"))
- _more=_button("Offers >",Rect2(20,290,144,48),func():
-  _market_page=(_market_page+1)%maxi(1,int(ceil(_game.shop_offers.size()/4.0)))
-  sync(_game)
- ,Color("425c69"))
- _more.hide()
  _specials=Control.new()
  UIStyle.place(_specials,self,Rect2(20,400,856,160))
  for index in range(4):
@@ -75,13 +68,24 @@ func sync(game: Game) -> void:
  wallet.set_amount(game.money)
  _reroll.text="Reroll\n$%d" % game.reroll_cost()
  _reroll.disabled=game.money.cmp(game.reroll_cost())<0
- _market_page=mini(_market_page,maxi(0,int(ceil(game.shop_offers.size()/4.0))-1))
- for index in range(4):
-  var actual: int = _market_page*4+index
-  var id: String = game.shop_offers[actual] if actual<game.shop_offers.size() else ""
+ var count: int = maxi(4,game.shop_offers.size())
+ while offers.size()<count:
+  var root := Control.new()
+  add_child(root)
+  offers.append({"id":"__unset","root":root,"buy":null,"card":null})
+ var width: float = minf(164,maxf(120,floorf((692.0-8*(count-1))/count)))
+ var step: float = minf(width+8,(692.0-width)/maxi(1,count-1))
+ for index in range(offers.size()):
+  var id: String = game.shop_offers[index] if index<game.shop_offers.size() else ""
   var slot: Dictionary = offers[index]
+  slot.root.visible=index<count
+  slot.root.position=Vector2(184+index*step,28)
+  slot.root.size=Vector2(width,330)
   if slot.id!=id: _fill_offer(index,id)
   if id!="" and is_instance_valid(slot.buy):
+   slot.card.size.x=width
+   slot.buy.size.x=width
+   slot.root.get_node("Price").size.x=width
    slot.buy.disabled=not game.can_grant(id) or game.money.cmp(game.cost_for(id))<0
    slot.root.get_node("Price").text="$%d" % game.cost_for(id)
    slot.card.item_state=game.f.offer_tags.get(id,{})
@@ -94,9 +98,6 @@ func sync(game: Game) -> void:
  if signature!=_special_signature:
   _fill_specials(game)
   _special_signature=signature
- _more.visible=game.shop_offers.size()>4
- _more.text="Offers >" if _market_page==0 else "< Offers"
- _more.position.y=332 if is_instance_valid(_heal) else 290
  if is_instance_valid(_heal): _heal.disabled=game.money.cmp(game.price(5))<0
  for child in _specials.find_children("*","Button",true,false):
   if child.has_meta("pack_slot"):
@@ -123,13 +124,13 @@ func _fill_offer(index: int, id: String) -> void:
  card.item_id=id
  card.motion_enabled=motion_enabled
  card.custom_minimum_size=Vector2.ZERO
- UIStyle.place(card,root,Rect2(0,46,164,192))
+ UIStyle.place(card,root,Rect2(0,46,root.size.x,192))
  card.inspected.connect(func(_item: String): _select_offer(index))
  slot.card=card
- var price: Label = _text("",Rect2(0,2,164,38),30,UIStyle.GOLD,root)
+ var price: Label = _text("",Rect2(0,2,root.size.x,38),30,UIStyle.GOLD,root)
  price.name="Price"
  price.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
- slot.buy=_button("BUY",Rect2(0,262,164,46),func(): buy_requested.emit(id),Color("328a69"),root)
+ slot.buy=_button("BUY",Rect2(0,262,root.size.x,46),func(): buy_requested.emit(id),Color("328a69"),root)
  slot.buy.name="Buy"+id.capitalize()
  slot.buy.visible=false
  if motion_enabled:

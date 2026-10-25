@@ -426,7 +426,7 @@ const UPGRADES = {
  "storefront1": {
   "id": "storefront1",
   "name": "Storefront I",
-  "desc": "Add one extra relic offer to every shop. Browse it with the offer-page button.",
+  "desc": "Add one extra relic offer to every shop. All offers appear together.",
   "art": "storefront1",
   "rarity": "Upgrade",
   "cost": 7,
