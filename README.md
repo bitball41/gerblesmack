@@ -6,7 +6,7 @@ The Fracture update adds 10 boards, 30 Relics, six three-tier upgrade families, 
 
 Every shop has two independent pack slots. Five equally likely families—Standard mixed, Reliquary, Grimoire, Sigil, and Fracture—come in Standard (3 choices / 1 pick), Jumbo (5 / 1), and Mega (5 / 2). Unbound Relics use no slot; Oversaturated doubles numerical benefits; Cursed is independent. The Workshop handles loans, investments, wagers, sacrifices, permanent Echoes, rewind, fusion, reserve cards, and board-specific exchanges.
 
-Rounded cards and panels share a quiet tabletop layout. Owned cards keep distinct colors and full-size slots; large inventories use pages. Rules and current scaling values appear beside the item, with selling available after selection. The illustrated Board button previews current tiles and effects. Next round opens a separate gate selector with progress, authoritative targets, and Guardian rules.
+Rounded cards and panels share a quiet tabletop layout. Relics keep distinct colors and stay together in one visible row; pocket overflow uses pages. Rules and current scaling values appear beside the item, with selling available after selection. The illustrated Board button previews current tiles and effects. Next round opens a separate gate selector with progress, authoritative targets, and Guardian rules.
 
 Scoring follows actual Relic order, seal passes, and retriggers, then banks the exact total. The presentation accelerates with large chains. At 8x or with reduced motion, playback and its queue are skipped. Paper, wood, metal, and pack sounds distinguish actions. All new artwork uses editable, manually specified pixel shapes; no image-generation models are used.
 
@@ -15,7 +15,7 @@ Scoring follows actual Relic order, seal passes, and retriggers, then banks the 
 - WASD, arrows, mouse/touch swipe, or controller D-pad/left stick to slide.
 - Space toggles purchased autoplay. Manual input stops it.
 - Escape cancels a Spell target or opens Options.
-- Drag Relics to reorder; selected-card arrows and Alt+Left/Right also work across inventory pages.
+- Drag Relics to reorder; selected-card arrows and Alt+Left/Right also work for ordering the row.
 - Click a card for actions; click it again to close. Hover shows rules and current values.
 - Workshop opens available Relic abilities and upgrade utilities.
 - Options controls sound, motion, speed, fullscreen, and save import/export.

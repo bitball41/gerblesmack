@@ -239,7 +239,7 @@ func _run_action(action: String) -> void:
   "board": _show_board()
   "workshop": _show_workshop()
   "upgrades": FractureMenus.show_upgrades(self)
-  "rack_page","pocket_page": _clear_context()
+  "pocket_page": _clear_context()
   "new": _show_new_run()
   "help": _show_help()
   "phase":

@@ -131,11 +131,10 @@ func run() -> void:
  ui._refresh_run(false)
  await process_frame
  var visible_cards: Array=ui.run_view.relic_cards.filter(func(card): return card.visible)
- check(visible_cards.size()==5 and ui.run_view._relic_pager.visible,"large relic inventory uses five full-size cards per page")
+ check(visible_cards.size()==ui.g.relics.size(),"every owned relic stays visible in one row")
  for index in range(1,visible_cards.size()):
-  check(visible_cards[index-1].get_global_rect().end.x<visible_cards[index].get_global_rect().position.x,"full relic slots stay separated")
- ui.run_view._relic_pager.pressed.emit()
- check(not ui.run_view.relic_cards[0].visible and ui.run_view.relic_cards[5].visible,"relic inventory pager reaches later owned cards")
+  check(visible_cards[index-1].position.x<visible_cards[index].position.x,"relic row preserves scoring order")
+ check(visible_cards[-1].position.x+visible_cards[-1].size.x<=ui.run_view.rack.size.x+1,"all relics fit within the rack")
  ui.g.inventory=["venus","mars","mercy","hourglass","genesis"]
  ui.g.f.phantoms=[{"id":"venus","tags":{}},{"id":"mars","tags":{}},{"id":"mercy","tags":{}}]
  ui._refresh_run(false)

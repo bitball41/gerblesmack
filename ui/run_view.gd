@@ -15,9 +15,7 @@ var relic_cards: Array[Control] = []
 var pocket_cards: Array[Control] = []
 var _relic_signature := ""
 var _pocket_signature := ""
-var _relic_page := 0
 var _pocket_page := 0
-var _relic_pager: Button
 var _pocket_pager: Button
 var _target_label: Label
 var _gate_name: Label
@@ -170,12 +168,7 @@ func _build() -> void:
  _pocket_count=_text("0 / 3",Rect2(1248,60,80,36),27,UIStyle.CREAM)
  _pocket_meter=load("res://ui/slot_meter.gd").new()
  UIStyle.place(_pocket_meter,self,Rect2(1340,76,64,12))
- _relic_pager=_button("",Rect2(972,62,164,34),"rack_page",Color("34515b"),Color("708c90"),27)
  _pocket_pager=_button(">",Rect2(1378,274,30,30),"pocket_page",Color("34515b"),Color("708c90"),27)
- _relic_pager.pressed.connect(func():
-  _relic_page=(_relic_page+1)%maxi(1,int(ceil(relic_cards.size()/5.0)))
-  _layout_owned_pages()
- )
  _pocket_pager.pressed.connect(func():
   _pocket_page=(_pocket_page+1)%maxi(1,int(ceil(pocket_cards.size()/6.0)))
   _layout_owned_pages()
@@ -309,7 +302,7 @@ func _sync_cards(game: Game) -> void:
   for node in rack.get_children(): rack.remove_child(node); node.queue_free()
   relic_cards.clear()
   var slot_width := 164.0
-  var step: float = minf(180.0,(848.0-slot_width)/maxi(1,mini(5,ids.size())-1))
+  var step: float = minf(180.0,(848.0-slot_width)/maxi(1,ids.size()-1))
   for index in range(ids.size()):
    var card: Control = CARD_SCENE.instantiate()
    card.item_id=ids[index]
@@ -318,7 +311,7 @@ func _sync_cards(game: Game) -> void:
    card.motion_enabled=motion_enabled
    card.custom_minimum_size=Vector2.ZERO
    rack.add_child(card)
-   card.position=Vector2((index%5)*step,0)
+   card.position=Vector2(index*step,0)
    card.size=Vector2(slot_width,192)
    card.inspected.connect(func(_id: String, pos: int = index): item_inspected.emit("relic",pos))
    card.reorder_requested.connect(func(from: int,to: int): relic_reordered.emit(from,to))
@@ -360,11 +353,7 @@ func _sync_cards(game: Game) -> void:
   relic_cards[index].queue_redraw()
 
 func _layout_owned_pages() -> void:
- var pages: int = maxi(1,int(ceil(relic_cards.size()/5.0)))
- _relic_page=clampi(_relic_page,0,pages-1)
- _relic_pager.visible=pages>1
- _relic_pager.text="%d / %d  >" % [_relic_page+1,pages]
- for index in range(relic_cards.size()): relic_cards[index].visible=int(index/5)==_relic_page
+ for card in relic_cards: card.visible=true
  var pocket_pages: int = maxi(1,int(ceil(pocket_cards.size()/6.0)))
  _pocket_page=clampi(_pocket_page,0,pocket_pages-1)
  _pocket_pager.visible=pocket_pages>1
@@ -426,10 +415,6 @@ func show_score_step(step: Dictionary, before, target) -> void:
  if step.has("id"):
   _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() else card_for(step.id)
   if is_instance_valid(_active_relic):
-   var slot: int = relic_cards.find(_active_relic)
-   if slot>=0 and int(slot/5)!=_relic_page:
-    _relic_page=int(slot/5)
-    _layout_owned_pages()
    _active_relic.score_trigger(step.text,step.kind=="retrigger")
   _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
  elif step.kind=="merge" and board.tiles.has(step.index):
