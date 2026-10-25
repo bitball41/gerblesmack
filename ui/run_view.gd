@@ -367,7 +367,7 @@ func show_score_step(step: Dictionary, before, target) -> void:
  _receipt_counts.text=str(step.text)
  _receipt_counts.add_theme_color_override("font_color",UIStyle.CREAM)
  if step.has("id"):
-  _active_relic=card_for(step.id)
+  _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() else card_for(step.id)
   if is_instance_valid(_active_relic): _active_relic.score_trigger(step.text,step.kind=="retrigger")
   _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
  elif step.kind=="merge" and board.tiles.has(step.index):

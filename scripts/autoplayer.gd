@@ -16,7 +16,9 @@ class Sampler:
 static func _copy(g):
  var q = g.get_script().new()
  q.persist_enabled=false
- for key in ["board_id","floor_num","gate","moves","gate_swipes","last_dir","rune_uses","phase","jammed"]: q.set(key,g.get(key))
+ for key in ["legacy_compat","board_id","floor_num","gate","moves","gate_swipes","last_dir","rune_uses","phase","jammed"]: q.set(key,g.get(key))
+ q.f=g.f.duplicate(true)
+ q.rng.state=g.rng.state
  q.rune_levels=g.rune_levels
  q.upgrades=g.upgrades
  q.cells=g.cells.duplicate()

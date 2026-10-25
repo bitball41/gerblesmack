@@ -2,9 +2,14 @@ extends RefCounted
 const Cat = preload("res://scripts/catalog.gd")
 const Num = preload("res://scripts/num.gd")
 const RunRng = preload("res://scripts/run_rng.gd")
+const Rules = preload("res://scripts/fracture_rules.gd")
+const Market = preload("res://scripts/fracture_market.gd")
+const Actions = preload("res://scripts/fracture_actions.gd")
 const SAVE_PATH = "user://gatefold-godot-v1.json"
 const PHASES = ["play","reward","failed","shop","gates","over"]
 var rng = RunRng.new()
+var legacy_compat := false
+var f: Dictionary = Rules.defaults()
 var seed_text := ""
 var cells: Array = []
 var relics: Array = []
@@ -66,16 +71,23 @@ func has_upgrade(id: String) -> bool:
  return upgrades.has(id)
 
 func max_relics() -> int:
- return 5+int(b().get("slots",0))+int(has_upgrade("slot1"))+int(has_upgrade("slot2"))
+ return 5+int(b().get("slots",0))+int(has_upgrade("slot1"))+int(has_upgrade("slot2"))+int(f.extra_slots)
 
 func max_pocket() -> int:
- return 3+int(has_upgrade("pocket1"))
+ return 3+int(has_upgrade("pocket1"))+(2 if has_upgrade("satchel1") else 0)
 
 func target():
- return Num.power(3,floor_num-1).times([96,160,256][gate]).times(b().get("target_mult",1))
+ var value = Num.power(3,floor_num-1).times([96,160,256][gate]).times(b().get("target_mult",1))
+ if not legacy_compat and floor_num>8:
+  var depth: float = floor_num-8
+  value=value.times(Num.power(2,depth*(depth+1)/2))
+ if f.difficulty=="cursed": value=value.times(Num.power(1.15,f.curse))
+ return value
 
 func budget() -> int:
- return [18,17,16][gate]+int(b().get("moves",0))+banked+(6 if has_upgrade("moves2") else 3 if has_upgrade("moves1") else 0)-(3 if gate==2 and guardian().id=="short" else 0)
+ var value: int = [18,17,16][gate]+int(b().get("moves",0))+banked+(6 if has_upgrade("moves2") else 3 if has_upgrade("moves1") else 0)-(3 if gate==2 and guardian().id=="short" else 0)-int(f.move_penalty)
+ if f.difficulty=="cursed": value-=int(f.curse/5.0)
+ return maxi(1,int(floor(value*float(b().get("move_mult",1)))))
 
 func spawn_min() -> int:
  return 1+int(int(rune_levels.spawn)/2.0)
@@ -86,37 +98,48 @@ func tile(e: int, fx: Dictionary = {}, seal: bool = false) -> Dictionary:
 func roll_tile() -> Dictionary:
  var chance: float = .10+.35*(int(rune_levels.spawn)%2)
  var exponent: int = spawn_min()+int(rng.randf()<chance)
- if has_relic("alchemy") and rng.randf()<.25: exponent+=1
+ if has_relic("alchemy") and rng.randf()<minf(1,.25*Rules.amount(self,"alchemy")): exponent+=1
  var fx := {}
  for key in ["gold","glass","steel"]:
-  if rng.randf()<1.0-pow(.92,rune_levels[key]): fx[key]=true
+  var chance_fx: float = 1.0-pow(.92,rune_levels[key])
+  if board_id=="glasshouse" and key=="glass": chance_fx=maxf(chance_fx,.5)
+  if board_id=="eclipse" and key==("gold" if (floor_num*3+gate)%2==1 else "glass"): chance_fx=1
+  if rng.randf()<chance_fx: fx[key]=true
  return tile(exponent,fx,rng.randf()<1.0-pow(.94,rune_levels.seal))
 
 func spawn() -> void:
  var free: Array = []
  for i in range(16):
-  if cells[i]==null: free.append(i)
+  if cells[i]==null and i!=int(f.block): free.append(i)
  if free.is_empty(): return
- cells[rng.pick(free)] = next_tile.duplicate(true) if not next_tile.is_empty() else roll_tile()
+ var index: int = rng.pick(free)
+ cells[index] = next_tile.duplicate(true) if not next_tile.is_empty() else roll_tile()
+ if not legacy_compat: Rules.after_spawn(self,index)
  next_tile = roll_tile()
 
 func upgrade_allowed(id: String) -> bool:
  return not id.begins_with("auto") or board_id=="robot" or floor_num>=3
 
-func can_grant(id: String) -> bool:
- if Cat.RELICS.has(id): return not has_relic(id) and relics.size()<max_relics()
- if Cat.SPELLS.has(id) or Cat.RUNES.has(id): return inventory.size()<max_pocket()
+func can_grant(id: String, tags: Dictionary = {}) -> bool:
+ if Cat.RELICS.has(id):
+  var actual: Dictionary = tags if not tags.is_empty() else Market.tags_for(self,id)
+  return not has_relic(id) and (actual.get("edition","")=="unbound" or Rules.bound_count(self)<max_relics())
+ if Cat.SPELLS.has(id) or Cat.RUNES.has(id) or Cat.FRACTURES.has(id): return inventory.size()<max_pocket()
  if Cat.UPGRADES.has(id):
+  if board_id=="eclipse" and id=="heart1": return false
   var requirement = Cat.UPGRADES[id].get("req")
   return not has_upgrade(id) and upgrade_allowed(id) and (requirement==null or has_upgrade(requirement))
  return false
 
-func _grant(id: String) -> bool:
- if not can_grant(id): return false
+func _grant(id: String, tags: Dictionary = {}) -> bool:
+ if not can_grant(id,tags): return false
  if Cat.RELICS.has(id):
-  relics.append({"id":id,"growth":Num.new(1),"charge":0.0,"carry":0})
+  var relic: Dictionary = {"id":id,"growth":Num.new(1),"charge":0.0,"carry":0}
+  if tags.get("edition","")!="unbound" and Rules.bound_count(self)>=max_relics(): return false
+  Rules.attach(self,relic,tags)
+  relics.append(relic)
   if id=="alchemy": next_tile=roll_tile()
- elif Cat.SPELLS.has(id) or Cat.RUNES.has(id): inventory.append(id)
+ elif Cat.SPELLS.has(id) or Cat.RUNES.has(id) or Cat.FRACTURES.has(id): inventory.append(id)
  else:
   upgrades.append(id)
   if id=="heart1":
@@ -124,7 +147,8 @@ func _grant(id: String) -> bool:
    hp+=1
  return true
 
-func new_run(id: String = "classic", run_seed: String = "") -> void:
+func new_run(id: String = "classic", run_seed: String = "", difficulty: String = "normal") -> void:
+ f=Rules.defaults(difficulty if difficulty in ["normal","cursed"] else "normal")
  floor_upgrade=""
  floor_upgrade_floor=0
  floor_upgrade_bought=false
@@ -174,6 +198,7 @@ func new_run(id: String = "classic", run_seed: String = "") -> void:
  for starting_id in b().get("relics",[])+b().get("upgrades",[])+b().get("items",[]): _grant(starting_id)
  for relic in relics:
   relic.charge = float(b().get("charges",{}).get(relic.id,0))
+ if not legacy_compat: Rules.setup(self)
  moves = budget()
  _clear_shop()
  save_run()
@@ -187,14 +212,17 @@ func slide(direction: String, source: Array = []) -> Dictionary:
  out.fill(null)
  var events: Array = []
  var changed := false
+ var segments: Array = []
  for line in range(4):
   var positions: Array = []
   for p in range(4):
-   match direction:
-    "left": positions.append(line*4+p)
-    "right": positions.append(line*4+3-p)
-    "up": positions.append(p*4+line)
-    "down": positions.append((3-p)*4+line)
+   var index: int = line*4+p if direction=="left" else line*4+3-p if direction=="right" else p*4+line if direction=="up" else (3-p)*4+line
+   if index==int(f.block):
+    if not positions.is_empty(): segments.append(positions)
+    positions=[]
+   else: positions.append(index)
+  if not positions.is_empty(): segments.append(positions)
+ for positions in segments:
   var src: Array = []
   for index in positions:
    if input[index]!=null: src.append({"tile":input[index],"from":index})
@@ -207,6 +235,7 @@ func slide(direction: String, source: Array = []) -> Dictionary:
     var other: Dictionary = src[k+1].tile
     var merged: Dictionary = tile(int(a.tile.e)+1,a.tile.fx,a.tile.seal or other.seal)
     merged.fx.merge(other.fx,true)
+    Rules.inherit_mark(merged,a.tile,other)
     out[dest] = merged
     events.append({"tile":merged,"index":dest})
     changed = true
@@ -237,6 +266,7 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
  var chain_pos := 0
  var fired: Array = []
  var entries: Array = []
+ var reverse_chain: bool = has_relic("mobius") and not self.f.gate.get("mobius",false) and not events.is_empty()
  for cell in cells:
   if cell!=null and cell.fx.get("steel",false): steel_count+=1
  for event in events: max_e=maxi(max_e,int(event.tile.e))
@@ -255,36 +285,42 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
   var t: Dictionary = event.tile
   var eligible: bool = not (gate==2 and guardian().id=="largest" and t.e!=max_e)
   if t.fx.get("gold",false):
-   income=income.plus(earn(4 if has_relic("greed") else 2))
+   income=income.plus(earn(4*Rules.amount(self,"greed") if has_relic("greed") else 2))
    if has_relic("greed"):
     fired.append("greed")
-    if record: steps.append({"kind":"relic","id":"greed","value":Num.new(),"text":"+$%d Gold" % (8 if has_upgrade("trade3") else 4)})
+    if record: steps.append({"kind":"relic","id":"greed","value":Num.new(),"text":"+$%d Gold" % int(4*Rules.amount(self,"greed")*(2 if has_upgrade("trade3") else 1))})
   var points = Num.new()
   var event_triggers := 0
   for pass_index in range(2 if t.seal else 1):
    var value = Num.power(2,t.e).times(Num.power(1.25,steel_count)).times(2 if t.fx.get("glass",false) else 1)
    var repeats := 1
    if record: steps.append({"kind":"merge","index":event.index,"value":value if eligible else Num.new(),"text":"Seal retrigger" if pass_index>0 else "Merge %d / %d" % [ei+1,events.size()]})
-   for relic in relics:
+   var applications: Array = Rules.sequence(self)
+   if reverse_chain: applications.append_array(Rules.sequence(self,true))
+   for application in applications:
+    var relic: Dictionary = application.relic
+    var physical: Dictionary = application.actor
+    var boost: float = float(application.boost)
+    var only_score: bool = bool(application.only_score)
     var id: String = relic.id
     var fired_before: int = fired.size()
     var repeats_before: int = repeats
     var income_before = income
-    if id=="business" and pass_index==0 and t.e<=3:
-     income=income.plus(earn(1))
-     fired.append(id)
-    if id=="monolith" and pass_index==0 and t.e>=previous_highest:
-     relic.growth=Num.of(relic.growth).times(1.15)
-     fired.append(id)
+    if id=="business" and not only_score and pass_index==0 and t.e<=3:
+     income=income.plus(earn(boost))
+     fired.append(physical.id)
+    if id=="monolith" and not only_score and pass_index==0 and t.e>=previous_highest:
+     relic.growth=Num.of(relic.growth).times(1.15*boost)
+     fired.append(physical.id)
     if not eligible:
      if record and fired.size()>fired_before:
-      steps.append({"kind":"relic","id":id,"value":Num.new(),"text":"Growth x1.15" if id=="monolith" else "+$"+income.minus(income_before).fmt()})
+      steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"value":Num.new(),"text":"Growth x1.15" if id=="monolith" else "+$"+income.minus(income_before).fmt()})
      continue
     var factor = null
     match id:
-     "carbon": value=value.plus(8); fired.append(id)
+     "carbon": value=value.plus(8*boost); fired.append(physical.id)
      "battery":
-      if battery_charge>0: value=value.plus(battery_charge); fired.append(id)
+      if float(relic.charge)>0: value=value.plus(float(relic.charge)*boost); fired.append(physical.id)
      "corner":
       if is_corner(event.index): factor=2
      "horizon":
@@ -301,35 +337,37 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
       if steel_count>0: factor=Num.power(1.2,steel_count)
      "charity": factor=money.div(10).floored().plus(1)
      "apprentice": factor=1+rune_uses*.25
-     "monolith","compound": factor=relic.growth
-     "echo": factor=2; repeats*=2
+     "monolith","compound","leech","guillotine","ghostwriter": factor=relic.growth
+     "echo": factor=2; repeats*=maxi(1,int(2*boost))
      "mirror":
-      if ei==0: factor=3; repeats*=3
+      if ei==0: factor=3; repeats*=maxi(1,int(3*boost))
      "ascension":
-      if t.e>=10: factor=3; repeats*=3
+      if t.e>=10: factor=3; repeats*=maxi(1,int(3*boost))
      "domino":
       if ei==events.size()-1 and events.size()>1:
        factor=pow(2,events.size()-1)
-       repeats*=int(factor)
+       repeats*=maxi(1,int(factor*boost))
      "feedback":
       var extra: int = maxi(0,int(floorf((int(relic.carry)+repeats-1)/4.0)))
-      if extra>0: factor=float(repeats+extra)/repeats
-      repeats+=extra
+      if extra>0: factor=float(repeats+int(extra*boost))/repeats
+      repeats+=int(extra*boost)
       relic.carry=(int(relic.carry)+repeats)%5
      "resonance":
-      var value_sum = Num.power(1.12,chain_pos+1).times(Num.power(1.12,repeats).minus(1)).div(.12)
+      var rate: float = 1.12*boost
+      var value_sum = Num.power(rate,chain_pos+1).times(Num.power(rate,repeats).minus(1)).div(.12 if boost==1 else rate-1)
       factor=value_sum.div(repeats)
       chain_pos+=repeats
-     "singularity": value=Num.power(10,value.log10_value()*1.2); fired.append(id)
+     "singularity": value=Num.power(10,value.log10_value()*1.2*boost); fired.append(physical.id)
     if factor!=null:
+     if boost!=1 and id!="resonance" and id!="feedback": factor=Num.of(factor).times(boost)
      value=value.times(factor)
-     fired.append(id)
+     fired.append(physical.id)
     if record and fired.size()>fired_before:
-     var note: String = "x"+_factor_text(factor) if factor!=null else "+8" if id=="carbon" else "+"+_factor_text(battery_charge) if id=="battery" else "^1.2" if id=="singularity" else "+$"+income.minus(income_before).fmt()
-     steps.append({"kind":"relic","id":id,"index":event.index,"value":value,"text":note})
+     var note: String = "x"+_factor_text(factor) if factor!=null else "+"+_factor_text(8*boost) if id=="carbon" else "+"+_factor_text(float(relic.charge)*boost) if id=="battery" else "^1.2" if id=="singularity" else "+$"+income.minus(income_before).fmt()
+     steps.append({"kind":"relic","id":physical.id,"slot":application.slot,"index":event.index,"value":value,"text":note})
      if repeats>repeats_before:
       var extra: int = repeats-repeats_before
-      steps.append({"kind":"retrigger","id":id,"value":value,"text":"+%d %s" % [extra,"trigger" if extra==1 else "triggers"]})
+      steps.append({"kind":"retrigger","id":physical.id,"slot":application.slot,"value":value,"text":"+%d %s" % [extra,"trigger" if extra==1 else "triggers"]})
    if eligible:
     points=points.plus(value)
     event_triggers+=repeats
@@ -339,9 +377,24 @@ func score_merges(events: Array, previous_highest: int, preview: bool = false, c
   if record: steps.append({"kind":"bank","index":event.index,"value":points,"subtotal":full,"text":"Blocked by guardian" if not eligible else "Guardian x0.75" if gate==2 and guardian().id=="quiet" else "Merge scored"})
   trigger_count+=event_triggers
   entries.append({"e":t.e,"index":event.index,"points":points,"triggers":event_triggers,"muted":not eligible})
-  if not preview and t.fx.get("glass",false) and rng.randf()<.25: cells[event.index]=null
+  if not legacy_compat:
+   var cues: Array = Rules.on_merge(self,event,preview)
+   if record:
+    for cue in cues:
+     cue.kind="relic"; cue.value=full; steps.append(cue)
+  if not preview and t.fx.get("glass",false) and rng.randf()<float(b().get("shatter_chance",.25)):
+   if Rules.prevent_shatter(self,t):
+    if record: steps.append({"kind":"merge","index":event.index,"value":full,"text":"Shatterproof / saved"})
+   else:
+    cells[event.index]=null
+    if not legacy_compat:
+     var cues: Array = Rules.on_shatter(self,event)
+     if record:
+      for cue in cues:
+       cue.kind="relic"; cue.value=full; steps.append(cue)
  for relic in relics:
   if relic.id=="battery": relic.charge=0.0
+ if reverse_chain: self.f.gate.mobius=true
  var ordered_fired: Array = []
  for relic in relics:
   if fired.has(relic.id): ordered_fired.append(relic.id)
@@ -366,6 +419,7 @@ func move(direction: String, capture_steps: bool = true) -> bool:
  if phase!="play" or jammed: return false
  var outcome: Dictionary = slide(direction)
  if not outcome.changed: return false
+ if not legacy_compat: Rules.before_move(self)
  var previous_highest: int = highest()
  cells=outcome.board
  swipes+=1
@@ -384,6 +438,7 @@ func move(direction: String, capture_steps: bool = true) -> bool:
  last_score_steps=gain.steps
  score=score.plus(gain.score)
  total_score=total_score.plus(gain.score)
+ if not legacy_compat: Rules.after_move(self,outcome.events)
  best_exp=maxi(best_exp,highest())
  spawn()
  if score.cmp(target())>=0: finish_gate(true)
@@ -395,6 +450,7 @@ func move(direction: String, capture_steps: bool = true) -> bool:
  return true
 
 func interest():
+ if int(f.no_interest)>0 or b().get("no_gate_cash",false): return Num.new()
  var amount = money.div(5).floored().times(2 if has_upgrade("trade2") else 1)
  var cap: int = 20 if has_upgrade("trade2") else 10 if has_upgrade("trade1") else 5
  return Num.of(cap) if amount.cmp(cap)>0 else amount
@@ -415,6 +471,7 @@ func finish_gate(win: bool) -> void:
  var efficiency: int = int(moves/3.0) if win and not b().get("no_efficiency",false) else 0
  var inc = interest() if win else Num.new()
  var bonus: int = int(b().get("money_gate",0))
+ if b().get("no_gate_cash",false): basic=0; efficiency=0; bonus=0
  var gross = earn(Num.of(basic).plus(efficiency).plus(inc).plus(bonus))
  var fee: int = mini(int(b().get("maintenance",0)),floor_num)
  var paid_fee = Num.of(fee) if money.cmp(fee)>=0 else money
@@ -424,7 +481,7 @@ func finish_gate(win: bool) -> void:
  if win:
   cleared+=1
   for relic in relics:
-   if relic.id=="compound": relic.growth=Num.of(relic.growth).times(1.25)
+   if relic.id=="compound": relic.growth=Num.of(relic.growth).times(1.25*Rules.power(relic))
   phase="reward"
   result_text="GATE CLEARED · +$%s · fee $%s" % [gross.fmt(),paid_fee.fmt()]
  else:
@@ -433,24 +490,27 @@ func finish_gate(win: bool) -> void:
   recover_board()
   phase="failed" if hp>0 else "over"
   result_text="Lost 1 Life. Two smallest tiles cleared."
+ if not legacy_compat:
+  if win: Rules.growth_after_win(self)
+  Rules.after_result(self,win)
  save_run()
 
 func filled() -> int:
  return cells.filter(func(c): return c!=null).size()
 
 func _eligible_relics() -> Array:
- return Cat.RELICS.keys().filter(func(id): return not has_relic(id))
+ return (Cat.BASE_RELICS.keys() if legacy_compat else Cat.RELICS.keys()).filter(func(id): return not has_relic(id))
 
 func _random_relic() -> String:
  var available: Array = _eligible_relics()
  var value: float = rng.randf()
- var rarity: String = "Common" if value<.6 else "Uncommon" if value<.92 else "Rare"
- var tier: Array = available.filter(func(id): return Cat.RELICS[id].rarity==rarity)
+ var rarity: String = "Common" if value<.6 else "Uncommon" if value<.92 else "Rare" if legacy_compat or value<.99 else "Legendary"
+ var tier: Array = available.filter(func(id): return (Cat.BASE_RELICS[id].rarity if legacy_compat else Cat.RELICS[id].rarity)==rarity)
  var result = rng.pick(tier if not tier.is_empty() else available)
  return result if result!=null else ""
 
 func _eligible_upgrades() -> Array:
- return Cat.UPGRADES.keys().filter(func(id): return can_grant(id))
+ return (Cat.BASE_UPGRADES.keys() if legacy_compat else Cat.UPGRADES.keys()).filter(func(id): return can_grant(id))
 
 func _make_offers() -> void:
  var first: String = _random_relic()
@@ -459,6 +519,11 @@ func _make_offers() -> void:
   var replacement = rng.pick(_eligible_relics().filter(func(id): return id!=first))
   if replacement!=null: second=replacement
  shop_offers=[first,second,rng.pick(Cat.SPELLS.keys()),rng.pick(Cat.RUNES.keys())]
+ if not legacy_compat:
+  if has_upgrade("storefront1"):
+   var extra: Array = _eligible_relics().filter(func(id): return not shop_offers.has(id))
+   if not extra.is_empty(): shop_offers.append(rng.pick(extra))
+  Market.tag_offers(self)
 
 func _make_shop() -> void:
  if floor_upgrade_floor==floor_num:
@@ -471,6 +536,10 @@ func _make_shop() -> void:
  if not higher.is_empty() and rng.randf()<.65: selected=rng.pick(higher)
  shop_upgrade=selected if selected!=null else ""
  floor_upgrade=shop_upgrade
+ f.floor_choices=[shop_upgrade] if shop_upgrade!="" else []
+ if not legacy_compat and has_upgrade("storefront3"):
+  var alternatives: Array = pool.filter(func(id): return id!=shop_upgrade)
+  if not alternatives.is_empty(): f.floor_choices.append(rng.pick(alternatives))
  floor_upgrade_floor=floor_num
  floor_upgrade_bought=false
  _make_offers()
@@ -489,6 +558,7 @@ func open_shop() -> void:
  phase="shop"
  _clear_shop()
  _make_shop()
+ if not legacy_compat: Market.make_packs(self)
  save_run()
 
 func price(base: int) -> int:
@@ -503,12 +573,14 @@ func cost_for(id: String) -> int:
 func buy_item(id: String) -> bool:
  if phase!="shop" or id=="" or (id!=shop_upgrade and not shop_offers.has(id)): return false
  var cost: int = cost_for(id)
- if money.cmp(cost)<0 or not _grant(id): return false
+ if money.cmp(cost)<0 or not _grant(id,Market.tags_for(self,id)): return false
  money=money.minus(cost)
  if id==shop_upgrade:
   shop_upgrade=""
   floor_upgrade_bought=true
  else: shop_offers[shop_offers.find(id)]=""
+ if f.locked_offer==id: f.locked_offer=""
+ if f.stowed.get("id","")==id: f.stowed={}
  result_text="Purchased "+Cat.name_for(id)
  save_run()
  return true
@@ -538,7 +610,8 @@ func reroll() -> bool:
  save_run()
  return true
 
-func pack_open() -> bool:
+func pack_open(slot: int = 0) -> bool:
+ if not legacy_compat: return Market.open_pack(self,slot)
  var cost: int = 0 if b().get("free_packs",false) else price(5)
  if phase!="shop" or shop_pack_bought or money.cmp(cost)<0: return false
  money=money.minus(cost)
@@ -554,6 +627,7 @@ func pack_open() -> bool:
  return true
 
 func pack_choose(id: String) -> bool:
+ if not legacy_compat: return Market.choose_pack(self,id)
  if phase!="shop" or not pack_choices.has(id) or not _grant(id): return false
  pack_choices=[]
  save_run()
@@ -570,6 +644,7 @@ func heal_shop() -> bool:
 
 func leave_shop() -> void:
  if phase!="shop": return
+ var old_floor: int = floor_num
  if pending_outcome:
   gate+=1
   if gate==3:
@@ -586,6 +661,7 @@ func leave_shop() -> void:
  _clear_shop()
  result_text=""
  result_summary={}
+ if not legacy_compat: Rules.after_shop(self,old_floor)
  while filled()<2: spawn()
  if not can_slide(): recover_board()
  save_run()
@@ -665,9 +741,9 @@ static func decode(value):
 
 func snapshot() -> Dictionary:
  var state := {}
- for key in ["seed_text","board_id","cells","relics","inventory","upgrades","rune_levels","rune_uses","floor_num","gate","hp","max_hp","moves","money","score","total_score","best_exp","cleared","failed","swipes","gate_swipes","last_dir","banked","phase","result_text","result_summary","last_merge","last_triggers","last_entries","fired_relics","next_tile","shop_offers","shop_upgrade","floor_upgrade","floor_upgrade_floor","floor_upgrade_bought","shop_rerolls","shop_pack_bought","pack_choices","shop_heal_bought","pending_outcome","jammed","endless"]:
+ for key in ["seed_text","board_id","cells","relics","inventory","upgrades","rune_levels","rune_uses","floor_num","gate","hp","max_hp","moves","money","score","total_score","best_exp","cleared","failed","swipes","gate_swipes","last_dir","banked","phase","result_text","result_summary","last_merge","last_triggers","last_entries","fired_relics","f","next_tile","shop_offers","shop_upgrade","floor_upgrade","floor_upgrade_floor","floor_upgrade_bought","shop_rerolls","shop_pack_bought","pack_choices","shop_heal_bought","pending_outcome","jammed","endless"]:
   state[key]=get(key)
- state.version=2
+ state.version=2 if legacy_compat else 3
  state.rng_state=rng.state
  return encode(state)
 
@@ -684,7 +760,7 @@ static func _valid_tile(value) -> bool:
 
 func restore(state) -> bool:
  # Validate before mutating the live run or writing over its save.
- if state is not Dictionary or int(state.get("version",0)) not in [1,2]: return false
+ if state is not Dictionary or int(state.get("version",0)) not in [1,2,3]: return false
  if state.get("phase") not in PHASES or state.get("cells") is not Array or state.cells.size()!=16: return false
  if state.get("next_tile") is not Dictionary or not _valid_tile(state.next_tile): return false
  for cell in state.cells:
@@ -699,11 +775,11 @@ func restore(state) -> bool:
   if state.get(key,[]) is not Array: return false
  var seen: Array = []
  for relic in state.get("relics",[]):
-  if relic is not Dictionary or not Cat.RELICS.has(relic.get("id")) or seen.has(relic.id) or not _valid_num(relic.get("growth")): return false
+  if relic is not Dictionary or not Cat.RELICS.has(relic.get("id")) or (seen.has(relic.id) and int(state.get("version",0))<3) or not _valid_num(relic.get("growth")): return false
   if not _finite(relic.get("charge")) or not _finite(relic.get("carry")): return false
   seen.append(relic.id)
  for id in state.get("inventory",[]):
-  if not Cat.SPELLS.has(id) and not Cat.RUNES.has(id): return false
+  if not Cat.SPELLS.has(id) and not Cat.RUNES.has(id) and not Cat.FRACTURES.has(id): return false
  for id in state.get("upgrades",[]):
   if not Cat.UPGRADES.has(id): return false
  for id in state.get("shop_offers",[])+state.get("pack_choices",[]):
@@ -717,9 +793,12 @@ func restore(state) -> bool:
  for key in ["spawn","gold","glass","steel","seal"]:
   if not _finite(runes.get(key)) or runes[key]<0: return false
  last_score_steps=[]
+ f=Rules.defaults()
  var restored: Dictionary = decode(state)
  for key in snapshot().keys():
   if key not in ["version","rng_state"] and restored.has(key): set(key,restored[key])
+ f=Rules.defaults().merged(f,true)
+ if f.difficulty=="normal": f.curse=0
  rune_levels=runes.duplicate(true)
  rng.state=int(state.rng_state)&RunRng.MASK
  # Version 1 native saves used plain floats.
@@ -802,7 +881,7 @@ func queue_gate() -> bool:
  return true
 
 func begin_gate() -> bool:
- if phase!="gates": return false
+ if phase!="gates" or not f.nomad_choices.is_empty(): return false
  phase="play"
  save_run()
  return true

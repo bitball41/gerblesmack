@@ -30,6 +30,7 @@ func same(actual, expected, path: String = "") -> bool:
 func game():
  var g=Game.new()
  g.persist_enabled=false
+ g.legacy_compat=true
  return g
 
 func _initialize() -> void:

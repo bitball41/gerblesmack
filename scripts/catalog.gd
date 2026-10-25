@@ -1,7 +1,7 @@
 extends RefCounted
 
 # Content snapshot from the final pre-Fracture HTML game.
-const RELICS = {
+const BASE_RELICS = {
  "carbon": {
   "id": "carbon",
   "name": "Carbon Paper",
@@ -437,7 +437,7 @@ const RUNES = {
   "rarity": "Rune"
  }
 }
-const UPGRADES = {
+const BASE_UPGRADES = {
  "auto1": {
   "id": "auto1",
   "name": "Auto-player I",
@@ -571,7 +571,7 @@ const UPGRADES = {
   "rarity": "Upgrade"
  }
 }
-const BOARDS = [
+const BASE_BOARDS = [
  {
   "id": "red",
   "name": "Red",
@@ -905,13 +905,35 @@ const GUARDIANS = [
  }
 ]
 
+const Fracture = preload("res://scripts/fracture_catalog.gd")
+static var RELICS: Dictionary = {}
+static var UPGRADES: Dictionary = {}
+static var BOARDS: Array = []
+static var FRACTURES: Dictionary = Fracture.FRACTURES
+static var PACKS: Dictionary = Fracture.PACKS
+static func _static_init() -> void:
+ RELICS=BASE_RELICS.duplicate(true)
+ RELICS.merge(Fracture.RELICS)
+ RELICS["compound"]["rarity"]="Legendary"
+ UPGRADES=BASE_UPGRADES.duplicate(true)
+ UPGRADES.merge(Fracture.UPGRADES)
+ BOARDS=BASE_BOARDS.duplicate(true)
+ BOARDS.append_array(Fracture.BOARDS)
+
+static func board_page(id: String) -> int:
+ var index: int = BOARDS.find(board(id))
+ return 0 if index<10 else 1 if index<15 else 2
+
+static func boards_on_page(page: int) -> Array:
+ return BOARDS.slice(0,10) if page==0 else BOARDS.slice(10,15) if page==1 else BOARDS.slice(15)
+
 static func board(id: String) -> Dictionary:
  for b in BOARDS:
   if b.id == id: return b
  return BOARDS[4]
 
 static func data_for(id: String) -> Dictionary:
- for pool in [RELICS,SPELLS,RUNES,UPGRADES]:
+ for pool in [RELICS,SPELLS,RUNES,UPGRADES,FRACTURES]:
   if pool.has(id): return pool[id]
  return {}
 

@@ -2,6 +2,7 @@ extends RefCounted
 const DISPLAY: Font = preload("res://assets/type/m6x11plus.ttf")
 const BODY: Font = preload("res://assets/type/m6x11plus.ttf")
 const BOLD: Font = DISPLAY
+const Fracture = preload("res://scripts/fracture_catalog.gd")
 const Visuals = preload("res://ui/visual_catalog.gd")
 const Num = preload("res://scripts/num.gd")
 const CREAM = Color("fff3ce")
@@ -71,7 +72,7 @@ static func texture(symbol: String, tint: Color = CREAM) -> TextureRect:
  return result
 
 static func colors(id: String) -> Array:
- var pair: Array = Visuals.CARDS.get(id,{}).get("colors",["#46799e","#fff3ce"])
+ var pair: Array = Visuals.CARDS.get(id,{}).get("colors",Fracture.RELICS.get(id,Fracture.FRACTURES.get(id,{})).get("colors",["#46799e","#fff3ce"]))
  return [Color(pair[0]),Color(pair[1])]
 
 static func tile_colors(exponent: int) -> Array:
