@@ -34,13 +34,14 @@ godot --headless --path . --script tests/polish.gd
 godot --headless --path . --script tests/gate_flow.gd
 godot --headless --path . --script tests/scoring.gd
 godot --headless --path . --script tests/retriggers.gd
+godot --headless --path . --script tests/numbers.gd
 godot --headless --path . --script tests/fracture.gd
 godot --headless --path . --script tests/fracture_ui.gd
 godot --headless --path . --export-release Web build/web/index.html
 python3 tools/prepare_web.py build/web
 ```
 
-GitHub Actions runs all eight suites before publishing to GitHub Pages. Test scenes and their browser-only inspection bridge are excluded from production.
+GitHub Actions runs all nine suites before publishing to GitHub Pages. Test scenes and their browser-only inspection bridge are excluded from production.
 
 Assets are committed. Optional rebuilds use `tools/build_pixel_assets.py` (small pictograms), `tools/build_relic_plates.py` (original Relics/boards), `tools/build_fracture_art.py` (Fracture artwork), `tools/build_shop_art.py` (shop sign/vouchers), and `tools/build_sound_assets.py` (material audio). Pillow and NumPy are only needed to rebuild assets.
 

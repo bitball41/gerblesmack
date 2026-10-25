@@ -12,12 +12,15 @@ func _ready() -> void:
  if scene in ["home","live"]:
   if scene=="live": g.persist_enabled=true
   return
- var board_id: String = "nomad" if scene=="fracture_nomad" else "vortex" if scene=="fracture_vortex" else "labyrinth" if scene=="fracture_blocked" else "blue" if scene.begins_with("clarity") or scene.begins_with("scoring") else "classic" if scene.begins_with("fracture") else "black"
+ var board_id: String = "hollow" if scene.begins_with("numbers_hollow") else "nomad" if scene=="fracture_nomad" else "vortex" if scene=="fracture_vortex" else "labyrinth" if scene=="fracture_blocked" else "blue" if scene.begins_with("clarity") or scene.begins_with("scoring") else "classic" if scene.begins_with("fracture") else "black"
  start_run(board_id,"POLISH","cursed" if scene.begins_with("fracture") and scene!="fracture_nomad" else "normal")
  if scene=="fracture_nomad": return
  if scene=="gates": return
  _begin_gate()
  effects.clear_transients()
+ if scene.begins_with("numbers"):
+  _numbers_fixture(scene)
+  return
  if scene.begins_with("fracture"):
   _fracture_fixture(scene)
   return
@@ -63,8 +66,19 @@ func _process(_delta: float) -> void:
  report.moving=moving
  report.scoring=scoring_sequence.active
  report.score=g.score.fmt()
+ report.score_detail=run_view._score_label.tooltip_text
+ report.score_width=run_view._score_label.get_theme_font("font").get_string_size(run_view._score_label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,run_view._score_label.get_theme_font_size("font_size")).x
+ report.score_rect=_bounds(run_view._score_label)
+ report.target_width=run_view._target_label.get_theme_font("font").get_string_size(run_view._target_label.text,HORIZONTAL_ALIGNMENT_LEFT,-1,run_view._target_label.get_theme_font_size("font_size")).x
+ report.target_rect=_bounds(run_view._target_label)
+ report.relic_timers=g.relics.map(func(r):return r.get("perishable_clears",-1))
+ report.ghostwriter=Game.Rules.actor(g,"ghostwriter").get("growth",Num.new()).fmt()
+ report.cleared=g.cleared
  report.score_text=run_view._score_label.text
  report.receipt=run_view._receipt_points.text
+ report.receipt_detail=run_view._receipt_points.tooltip_text
+ report.receipt_width=run_view._receipt_points.get_theme_font("font").get_string_size(run_view._receipt_points.text,HORIZONTAL_ALIGNMENT_LEFT,-1,run_view._receipt_points.get_theme_font_size("font_size")).x
+ report.receipt_rect=_bounds(run_view._receipt_points)
  report.receipt_note=run_view._receipt_counts.text
  report.receipt_note_rect=_bounds(run_view._receipt_counts)
  report.receipt_note_min_height=run_view._receipt_counts.get_minimum_size().y
@@ -205,3 +219,31 @@ func _fracture_fixture(scene: String) -> void:
  if scene=="fracture_target":
   g.inventory=["genesis","venus"]
   _refresh_run(false);_select_item(0)
+
+func _numbers_fixture(scene: String) -> void:
+ reduced_motion=false
+ auto_speed=1
+ if scene=="numbers_hollow_selector":
+  _show_new_run();run_selector._set_page(2);run_selector._select("hollow",false)
+  return
+ if scene.begins_with("numbers_hollow"):
+  if scene=="numbers_hollow_final":
+   for index in range(2): g.phase="play";g.finish_gate(true)
+   g.phase="play";g.cells.fill(null);g.cells[0]=g.tile(1);g.cells[1]=g.tile(1)
+   g.score=g.target().minus(1)
+  _refresh_run();return
+ g.relics=[];g._grant("ghostwriter");g._grant("singularity",{"edition":"oversaturated"})
+ g.relics[0].growth=Num.new(1.23456789,45600000)
+ g.score=Num.of(g.relics[0].growth);g.total_score=g.score;g.last_merge=g.score
+ g.floor_num=100
+ if scene=="numbers_ee":
+  g.score=Num.new(1,248.05,1);g.total_score=g.score;g.last_merge=g.score;g.relics[0].growth=g.score
+ if scene in ["numbers_layer","numbers_layers"]:
+  g.score=Num.power(2,4096).raised(Num.power(1.2,1000000))
+  if scene=="numbers_layers": g.score=g.score.raised(g.score)
+  g.total_score=g.score;g.last_merge=g.score;g.relics[0].growth=g.score
+ if scene=="numbers_sale":
+  g.relics[0].growth=Num.new(1,5)
+  g.finish_gate(true);g.open_shop()
+  _refresh_run(false);_show_shop();return
+ _refresh_run();effects.clear_transients()

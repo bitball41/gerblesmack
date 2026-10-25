@@ -706,6 +706,7 @@ func _show_help() -> void:
   ["ENHANCED TILES","Gold pays $2 per merge. Glass scores ×2 but has a 25% shatter chance. Each Steel tile adds ×1.25 to every merge. An Echo mark runs scoring twice. Enhancements pass to merged tiles."],
   ["FRACTURE","25 boards, 54 Relics, 30 upgrades, and Fracture consumables. Two shop packs independently draw Standard, Reliquary, Grimoire, Sigil, or Fracture. Jumbo shows five choices; Mega lets you keep two. Workshop abilities and reserve storage appear when unlocked."],
   ["EDITIONS & CURSE","Unbound Relics use no slot. Oversaturated doubles numerical benefits. Cursed is an independent x1.5 boost in Cursed difficulty. Cursed starts at 2 Curse; taking a Cursed Relic adds 2, each Guardian attempt adds 1. Targets gain x1.15 per Curse; every 5 Curse removes one starting move. Normal has no Curse."],
+  ["HUGE NUMBERS","Scientific notation keeps significant digits. In 1.23e4.56e7, the exponent is 4.56e7: the value is 1.23 times 10 raised to 45,600,000. Hover score numbers for more digits. Formatting never changes scoring."],
   ["SCORING SPEED","1x, 2x, and 4x show Relics resolving in order, including retriggers. 8x skips the scoring sequence. Reduced motion also resolves directly. Change Game Speed in Options."],
   ["SPELLS, RUNES & UPGRADES","Inspect a pocket card to use it. Duplicate needs a source then an empty destination. Runes improve natural spawns. Upgrades last for the run. Space toggles purchased autoplay; manual input stops it. Escape cancels targeting or opens the menu."]
  ]:

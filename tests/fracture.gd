@@ -43,7 +43,7 @@ func run() -> void:
    check(g.cells.size()==16 and g.moves>0 and g.hp>0 and g.hp<=g.max_hp,"valid start "+board.id+" "+mode)
    roundtrip(g,board.id+" "+mode)
  var g=game("hollow")
- check(g.relics.is_empty() and g.max_relics()==7 and g.money.cmp(4)==0,"Hollow kit and seven empty slots")
+ check(g.relics.size()==1 and g.relics[0].id=="avalanche" and g.relics[0].perishable_clears==3 and g.max_relics()==7 and g.money.cmp(4)==0,"Hollow starts Perishable Avalanche with seven slots")
  g.upgrades=["moves1"]
  check(g.budget(0)==16 and g.budget(1)==16 and g.budget(2)==15,"Hollow penalty applies to every upgraded gate budget")
  g=game("treasury")

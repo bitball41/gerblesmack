@@ -153,7 +153,7 @@ func run() -> void:
  g.relics.append(relic("singularity"))
  var layered: Dictionary = g.score_merges([event(g,12)],13)
  check(layered.score.layer>0 and is_finite(layered.score.e) and is_finite(layered.score.m),"repeated powers promote to finite layered exponents")
- check(layered.score.fmt().begins_with("ee") and layered.score.cmp(Num.new(1,1e14))>0,"layered formatting and ordering remain meaningful")
+ check(layered.score.fmt().begins_with("1e") and layered.score.cmp(Num.new(1,1e14))>0,"layered formatting and ordering remain meaningful")
  g.score=layered.score;g.total_score=layered.score;g.last_merge=layered.score
  h=game()
  check(h.import_run(g.export_run()) and h.score.cmp(g.score)==0,"layered scores save and reload without Infinity or lost magnitude")

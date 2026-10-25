@@ -137,6 +137,7 @@ func _build() -> void:
  _progress.add_theme_stylebox_override("fill",UIStyle.box(UIStyle.BLUE,UIStyle.BLUE,0,0,0))
  UIStyle.place(_progress,self,Rect2(32,454,188,6))
  _remaining=_text("96 to go",Rect2(32,467,188,36),32,UIStyle.MUTED)
+ for number_label in [_target_label,_score_label,_remaining]: number_label.clip_text=true
  _text("Moves",Rect2(32,514,120,36),32,UIStyle.MUTED)
  _moves=_text("18",Rect2(152,510,76,48),48,UIStyle.BLUE,true)
  for index in range(sidebar_start,get_child_count()): _sidebar_play.append(get_child(index))
@@ -187,6 +188,7 @@ func _build() -> void:
  board.size=Vector2(420,420)
  _receipt_heading=_text("Last swipe",Rect2(1024,393,300,38),32,UIStyle.MUTED)
  _receipt_points=_text("+0",Rect2(1024,434,300,64),64,UIStyle.CREAM,true)
+ _receipt_points.clip_text=true
  _receipt_counts=_text("MERGES 0\nTRIGGERS 0",Rect2(1024,514,340,108),27,UIStyle.MUTED,false,self,true)
  _receipt_counts.add_theme_font_size_override("font_size",27)
  _rule_notice=_text("",Rect2(1024,590,340,60),27,UIStyle.GOLD,false,self,true)
@@ -247,8 +249,8 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _upgrade_zone.visible=not game.upgrades.is_empty()
  _controls_hint.text="CLICK A CARD TO SELECT" if game.phase=="shop" else "WASD / ARROWS / SWIPE"
  var target = game.target()
- _target_label.text=target.fmt()
- UIStyle.fit(_target_label,64,32)
+ UIStyle.paint_number(_target_label,target,"",64)
+ UIStyle.fit_number(_target_label,64)
  _gate_subtitle.text="GATE %d / 3" % (game.gate+1)
  _gate_name.text=game.guardian().name if game.gate==2 else ["Entry Gate","Inner Gate"][game.gate]
  _guardian_note.text=game.guardian().desc if game.gate==2 else ""
@@ -273,9 +275,9 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
  _spawn_badge.text="TIER %d" % (int(game.rune_levels.spawn)+1)
  if not scoring:
   _receipt_heading.text="Last swipe"
-  _receipt_points.text="+"+game.last_merge.fmt()
+  UIStyle.paint_number(_receipt_points,game.last_merge,"+",64)
   _receipt_points.add_theme_color_override("font_color",UIStyle.CREAM)
-  UIStyle.fit(_receipt_points,64,32)
+
   _receipt_counts.text="MERGES %d\nTRIGGERS %s" % [game.last_entries.size(),UIStyle.Num.of(game.last_triggers).fmt()]
   _receipt_counts.add_theme_color_override("font_color",UIStyle.MUTED)
  _seed.text=game.b().name.to_upper()+" BOARD / SEED: "+game.seed_text
@@ -298,7 +300,7 @@ func sync(game: Game, redraw_board: bool = true, auto_on: bool = false, speed: i
 
 func _sync_cards(game: Game) -> void:
  var ids: Array = game.relics.map(func(relic): return relic.id)
- var signature: String = str(game.relics.map(func(r): return [r.id,r.get("uid",0),r.get("edition",""),r.get("cursed",false),r.get("echoed",false)]))+str(game.max_relics())
+ var signature: String = str(game.relics.map(func(r): return [r.id,r.get("uid",0),r.get("edition",""),r.get("cursed",false),r.get("echoed",false),r.get("perishable_clears",-1)]))+str(game.max_relics())
  if signature!=_relic_signature:
   for node in rack.get_children(): rack.remove_child(node); node.queue_free()
   relic_cards.clear()
@@ -409,13 +411,13 @@ func show_score_step(step: Dictionary, before, target) -> void:
  if not scoring: return
  if is_instance_valid(_active_relic): _active_relic.clear_score_feedback()
  _active_relic=null
- _receipt_points.text=UIStyle.Num.of(step.value).fmt()
+ UIStyle.paint_number(_receipt_points,step.value,"",64)
  _receipt_points.add_theme_color_override("font_color",UIStyle.BLUE if step.kind=="retrigger" else UIStyle.GOLD)
- UIStyle.fit(_receipt_points,64,32)
+
  _receipt_counts.text=str(step.text)
  _receipt_counts.add_theme_color_override("font_color",UIStyle.CREAM)
  if step.has("id"):
-  _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() else card_for(step.id)
+  _active_relic=relic_cards[int(step.slot)] if step.has("slot") and int(step.slot)<relic_cards.size() and relic_cards[int(step.slot)].item_id==step.id else card_for(step.id)
   if is_instance_valid(_active_relic):
    _active_relic.score_trigger(step.get("badge_text",step.text),step.kind=="retrigger")
   _receipt_counts.text=Cat.name_for(step.id)+"\n"+str(step.text)
@@ -424,7 +426,7 @@ func show_score_step(step: Dictionary, before, target) -> void:
  if step.kind=="bank":
   visible_score=UIStyle.Num.of(before).plus(step.subtotal)
   _paint_score(visible_score,target,false)
-  _receipt_points.text="+"+UIStyle.Num.of(step.subtotal).fmt()
+  UIStyle.paint_number(_receipt_points,step.subtotal,"+",64)
 
 func cancel_score_display() -> void:
  scoring=false
@@ -441,10 +443,10 @@ func _paint_score(value, target, animate: bool) -> void:
    _score_tween=create_tween()
    _score_tween.tween_method(_draw_score,_displayed_score,value.to_float(),.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
   else:
-   _score_label.text=score_text
+   UIStyle.paint_number(_score_label,value,"",64)
    _displayed_score=value.to_float() if value.e<12 else 0.0
   _last_score=score_text
- UIStyle.fit(_score_label,64,32)
+ UIStyle.fit_number(_score_label,64)
  var ratio: float = value.ratio_to(target)
  if _progress_tween and _progress_tween.is_valid(): _progress_tween.kill()
  if animate:
@@ -453,11 +455,12 @@ func _paint_score(value, target, animate: bool) -> void:
  else: _progress.value=ratio*100
  var remaining: String = target.minus(value).fmt()
  _remaining.text="GATE CLEARED" if ratio>=1 else remaining+" TO GO" if UIStyle.BODY.get_string_size(remaining+" TO GO",HORIZONTAL_ALIGNMENT_LEFT,-1,36).x<=188 else remaining
+ UIStyle.fit_number(_remaining,32)
 
 func _draw_score(value: float) -> void:
  _displayed_score=value
- _score_label.text=UIStyle.number(roundf(value))
- UIStyle.fit(_score_label,64,32)
+ UIStyle.paint_number(_score_label,roundf(value),"",64)
+ UIStyle.fit_number(_score_label,64)
 
 static func live_state(game: Game, relic: Dictionary) -> String:
  return Game.Rules.status(game,relic)

@@ -174,6 +174,37 @@ static func fit(label_node: Label, largest: int, smallest: int = 12) -> void:
  while font_size>maxi(36,smallest) and font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x>label_node.size.x: font_size-=18
  label_node.add_theme_font_size_override("font_size",pixel_font_size(font_size))
 
+## Numeric displays keep six significant digits where space permits. Hover
+## always exposes ten; narrow sidebars use five or four before reducing size.
+static func paint_number(label_node: Label, value, prefix: String = "", largest: int = 64) -> void:
+ var number = Num.of(value)
+ var available: float = float(label_node.get_meta("numeric_width",label_node.size.x))
+ label_node.set_meta("numeric_width",available)
+ label_node.clip_text=true
+ label_node.size.x=available
+ var font: Font = label_node.get_theme_font("font")
+ for digits in [6,5,4]:
+  var text: String = prefix+number.fmt(digits)
+  for font_size in [pixel_font_size(largest),54,36,27]:
+   if font_size>pixel_font_size(largest): continue
+   if font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x<=label_node.size.x:
+    label_node.add_theme_font_size_override("font_size",font_size)
+    label_node.text=text
+    label_node.tooltip_text=prefix+number.fmt(10)+"\n"+number.explain(8)
+    label_node.mouse_filter=Control.MOUSE_FILTER_PASS
+    return
+ label_node.text=prefix+number.fmt(4)
+ fit_number(label_node,largest)
+ label_node.tooltip_text=prefix+number.fmt(10)+"\n"+number.explain(8)
+ label_node.mouse_filter=Control.MOUSE_FILTER_PASS
+
+static func fit_number(label_node: Label, largest: int = 64) -> void:
+ var font: Font = label_node.get_theme_font("font")
+ for font_size in [pixel_font_size(largest),54,36,27,18]:
+  if font_size>pixel_font_size(largest): continue
+  label_node.add_theme_font_size_override("font_size",font_size)
+  if font.get_string_size(label_node.text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x<=label_node.size.x: return
+
 static func summary(text: String, width: float, font_size: int, max_lines: int = 3) -> String:
  var lines: Array[String] = []
  var line := ""
