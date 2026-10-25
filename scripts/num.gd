@@ -28,7 +28,7 @@ func _normalize() -> void:
    layer+=1
   return
  var shift: float = floorf(log(m) / log(10.0))
- m /= pow(10.0, shift)
+ m /= pow(10.0,shift)
  e += shift
  if m >= 9.999999999999998:
   m=1.0; e+=1.0
@@ -153,16 +153,33 @@ func ratio_to(value) -> float:
  if layer>0 or b.layer>0: return 0.0
  return clampf(pow(10.0,log10_value()-b.log10_value()),0.0,1.0)
 
-func fmt() -> String:
+## Display precision only: stored mantissas/exponents are never rounded here.
+func fmt(significant_digits: int = 6) -> String:
+ var digits: int = clampi(significant_digits,3,10)
  if m==0.0: return "0"
- if layer>0:
-  var prefix: String = "e".repeat(layer+1) if layer<5 else "e^%d " % (layer+1)
-  return prefix+str(snappedf(e,.01))
+ if layer>=4: return "e^%d %s" % [layer+1,of(e).fmt(digits)]
+ if layer>0: return "1e"+log10_num().fmt(digits)
  if e<6: return str(int(roundf(to_float())))
- var mantissa: float = snappedf(m,0.01)
+ var places: int = digits-1
+ var mantissa: float = snappedf(m,pow(10.0,-places))
  var exponent: float = e
  if mantissa>=10.0: mantissa=1.0; exponent+=1.0
- return "%se%s" % [str(mantissa),str(int(exponent)) if absf(exponent)<9e18 else str(exponent)]
+ var power_text: String = of(exponent).fmt(digits) if exponent>=1e6 else str(int(exponent))
+ return _decimal(mantissa,places)+"e"+power_text
+
+func explain(significant_digits: int = 6) -> String:
+ if m==0.0 or (layer==0 and e<6): return fmt(significant_digits)
+ if layer>=4: return "Repeated powers of ten / height %d" % (layer+1)
+ if layer>0: return "10^("+log10_num().explain(significant_digits)+")" if layer>1 else "10^("+log10_num().fmt(significant_digits)+")"
+ return _decimal(m,clampi(significant_digits-1,2,9))+" x 10^("+of(e).fmt(significant_digits)+")"
+
+static func _decimal(value: float, places: int) -> String:
+ var pattern: String = "%.$pf".replace("$p",str(places))
+ var result: String = pattern % value
+ if "." in result:
+  while result.ends_with("0"): result=result.left(-1)
+  result=result.trim_suffix(".")
+ return result
 
 func encode() -> Dictionary:
  return {"__num":[m,e,layer]} if layer>0 else {"__num":[m,e]}

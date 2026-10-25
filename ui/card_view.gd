@@ -109,6 +109,10 @@ func _draw() -> void:
   draw_colored_polygon(PackedVector2Array([Vector2(size.x-15,9),Vector2(size.x-9,15),Vector2(size.x-15,21),Vector2(size.x-21,15)]),Color("d08dd8"))
  if item_state.get("echoed",false):
   draw_circle(Vector2(14,15),5,UIStyle.RED)
+ if item_state.has("perishable_clears"):
+  var remaining: String = str(int(item_state.perishable_clears))
+  draw_style_box(UIStyle.box(Color("24343a"),UIStyle.GOLD,4,0,2),Rect2(size.x-33,8,25,26))
+  draw_string(UIStyle.BODY,Vector2(size.x-27,28),remaining,HORIZONTAL_ALIGNMENT_LEFT,-1,27,UIStyle.GOLD)
  if double_use or phantom:
   var badge: String = "x2" if double_use else "P"
   draw_string(UIStyle.BODY,Vector2(8,size.y-10),badge,HORIZONTAL_ALIGNMENT_LEFT,-1,18,UIStyle.BLUE if phantom else UIStyle.GOLD)

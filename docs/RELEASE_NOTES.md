@@ -1,3 +1,10 @@
+# Huge numbers and Hollow — 1.1.2
+
+- Selling Singularity now permanently raises Ghostwriter's stored multiplier to Singularity's current power. Both relics' numerical edition benefits apply. Other scoring-relic sales retain their existing multiplier behavior; Ghostwriter remains Rare.
+- Huge values display six significant digits and nested scientific exponents, such as `1.23e4.56e7`. Layered magnitudes show the coefficient of their enormous exponent. Numeric sidebars fit their available space and expose ten significant digits on hover; display rounding never alters the saved value.
+- Layered score arithmetic, overflow protection, exact retrigger counters, adaptive animation, 8x skip, reduced motion, and Devourer's current Echoed behavior are retained and regression checked.
+- New Hollow runs start with ordinary-strength Perishable Avalanche. It expires after three successful gate clears, freeing its slot; failed gates do not consume a clear. Its remaining lifetime appears on the card and tooltip, survives saves and transformations, and follows the ability if absorbed by Devourer. Existing Hollow saves do not receive a new relic.
+
 # Retrigger fixes — 1.1.1
 
 - Retriggers now apply the scoring effects they reach. Additions scale by activation count, multipliers use repeated powers, Singularity composes its powers, and Resonance multiplies every growing bonus. Batching preserves left-to-right order, seal passes, Guardian rules, and Mobius reverse scoring.

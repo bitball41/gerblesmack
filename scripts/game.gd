@@ -844,6 +844,11 @@ static func _valid_num(value) -> bool:
 static func _finite(value) -> bool:
  return (value is int or value is float) and is_finite(float(value))
 
+static func _valid_perishable(relic: Dictionary) -> bool:
+ if not relic.has("perishable_clears"): return true
+ var remaining = relic.perishable_clears
+ return _finite(remaining) and remaining>=1 and remaining<=3 and remaining==floorf(remaining)
+
 static func _valid_tile(value) -> bool:
  return value is Dictionary and _finite(value.get("e")) and float(value.e)>=1 and value.get("fx") is Dictionary and value.get("seal") is bool
 
@@ -873,6 +878,8 @@ func restore(state) -> bool:
   for ability in relic.get("abilities",[]):
    if ability is not Dictionary or ability.get("id") not in Rules.COPIABLE or not _valid_num(ability.get("growth")) or not _finite(ability.get("charge")) or not _finite(ability.get("carry")) or ability.get("edition","") not in ["","unbound","oversaturated"] or ability.get("cursed",false) is not bool: return false
    if ability.get("echoed",false) is not bool or not _finite(ability.get("echo_passes",2)) or ability.get("echo_passes",2)<2: return false
+   if not _valid_perishable(ability): return false
+  if not _valid_perishable(relic): return false
   if relic.has("uid"):
    if not _finite(relic.uid) or relic.uid<1 or uids.has(relic.uid): return false
    uids.append(relic.uid)

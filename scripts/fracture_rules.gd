@@ -28,7 +28,7 @@ static func gate_key(relic: Dictionary, name: String) -> String:
 static func attach(game, relic: Dictionary, tags: Dictionary = {}) -> void:
  game.f.serial+=1
  relic.uid=game.f.serial
- for key in ["edition","cursed","echoed","echo_passes"]:
+ for key in ["edition","cursed","echoed","echo_passes","perishable_clears"]:
   if tags.has(key): relic[key]=tags[key]
  if relic.get("cursed",false) and game.f.difficulty=="cursed": game.f.curse+=2
 
@@ -42,6 +42,7 @@ static func setup(game) -> void:
   if not compound.is_empty(): compound.edition="oversaturated"
  for relic in game.relics:
   if not relic.has("uid"): attach(game,relic)
+ if game.board_id=="hollow": game._grant("avalanche",{"perishable_clears":3})
  if game.board_id=="nomad":
   var pool: Array = game._eligible_relics().filter(func(id): return Cat.RELICS[id].rarity in ["Common","Uncommon"])
   for index in range(3):
@@ -318,6 +319,7 @@ static func growth_after_win(game) -> void:
 
 static func after_result(game, win: bool) -> void:
  game.f.phantoms=[]
+ if win: expire_perishables(game)
  if win and int(game.f.no_interest)>0: game.f.no_interest-=1
  if game.gate==2:
   if game.f.difficulty=="cursed": game.f.curse+=1
@@ -342,6 +344,28 @@ static func after_result(game, win: bool) -> void:
  game.f.wager=Num.new()
  if game.hp<=0: game.phase="over"
 
+static func expire_perishables(game) -> void:
+ var expired: Array[String] = []
+ for index in range(game.relics.size()-1,-1,-1):
+  var relic: Dictionary = game.relics[index]
+  # Inherited temporary abilities retain their lifetime when absorbed.
+  var abilities: Array = relic.get("abilities",[])
+  for ability_index in range(abilities.size()-1,-1,-1):
+   var ability: Dictionary = abilities[ability_index]
+   if not ability.has("perishable_clears"): continue
+   ability.perishable_clears-=1
+   if ability.perishable_clears<=0:
+    expired.append(Cat.name_for(ability.id))
+    abilities.remove_at(ability_index)
+  if not relic.has("perishable_clears"): continue
+  relic.perishable_clears-=1
+  if relic.perishable_clears<=0:
+   expired.append(Cat.name_for(relic.id))
+   game.relics.remove_at(index)
+ if not expired.is_empty():
+  game.f.notice="Expired / "+", ".join(expired)
+  game.result_text+=" "+", ".join(expired)+" expired."
+
 static func after_shop(game, previous_floor: int) -> void:
  if game.floor_num!=previous_floor:
   game.f.floor={}
@@ -358,12 +382,15 @@ static func current_factor(game, relic: Dictionary):
  elif id=="apprentice": value=Num.of(1+game.rune_uses*.25)
  elif id in ["corner","horizon","odd","echo"]: value=Num.new(2)
  elif id in ["redline","magnet","mirror","ascension"]: value=Num.new(3)
+ elif id=="singularity": value=Num.new(1.2)
  elif id=="steelworks": return Num.power(1.2*power(relic),game.cells.filter(func(t): return t!=null and t.fx.get("steel",false)).size())
  return value.times(power(relic)) if power(relic)!=1 else value
 
 static func on_sale(game, sold: Dictionary, factor) -> void:
  for relic in game.relics:
-  if relic.id=="ghostwriter" and sold.id in SCORING: relic.growth=Num.of(relic.growth).times(Num.of(factor).times(power(relic)))
+  if relic.id=="ghostwriter" and sold.id in SCORING:
+   var benefit = Num.of(factor).times(power(relic))
+   relic.growth=Num.of(relic.growth).raised(benefit) if sold.id=="singularity" else Num.of(relic.growth).times(benefit)
  if game.has_relic("recycling_bin") and not game.f.gate.get("recycling",false):
   var given := false
   for count in range(maxi(1,int(ceil(amount(game,"recycling_bin"))))):
@@ -443,11 +470,13 @@ static func status(game, relic: Dictionary) -> String:
  elif edition=="oversaturated": traits.append("Oversaturated")
  if relic.get("cursed",false): traits.append("Cursed")
  if not traits.is_empty(): lines.append(" + ".join(traits)+( " / no slot" if edition=="unbound" else ""))
+ if relic.has("perishable_clears"): lines.append("Perishable / %d successful clears left" % int(relic.perishable_clears))
  if relic.get("echoed",false): lines.append("Echoed / %d scoring passes" % int(relic.get("echo_passes",2)))
  var boost: float = power(relic)
  match relic.id:
   "carbon": lines.append("Current  +"+number(8*boost)+" points")
   "monolith","compound","leech","guillotine","ghostwriter","charity","apprentice","steelworks": lines.append("Current  x"+number(current_factor(game,relic)))
+  "singularity": lines.append("Current  ^"+number(1.2*boost)+" / sale powers Ghostwriter")
   "battery": lines.append("Stored  +"+number(float(relic.charge)*boost)+" points")
   "echo": lines.append("Current  x"+number(2*boost)+" / triggers x"+str(maxi(1,int(2*boost))))
   "feedback": lines.append("Trigger progress  "+str(int(relic.carry))+" / 5")

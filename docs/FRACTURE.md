@@ -12,7 +12,7 @@ The original ten boards remain on page one, the existing five named boards on pa
 | Treasury | $50 and the existing Deep Pockets Relic; no gate-clear, efficiency, or interest cash. Merge, sale, and Relic payouts still work. |
 | Eclipse | Alternate Gold/Glass gates; exactly 1 maximum Life. |
 | Vortex | Rotate clockwise after every fourth valid swipe, without scoring the turn. |
-| Hollow | 7 relic slots, $4, no Carbon Paper; 20% fewer starting moves every gate, including upgrade bonuses. |
+| Hollow | 7 relic slots, $4, no Carbon Paper; starts with Perishable Avalanche, expiring after three successful gate clears. 20% fewer starting moves every gate, including upgrade bonuses. |
 | Reactor | Every eighth actual merge doubles the smallest tile without scoring; -3 starting moves. |
 | Twinfall | Every sixth natural spawn makes one identical copy in an empty cell. Copies do not recurse. |
 | Nomad | Choose a starting companion from three Relics. At each new floor, optionally exchange a Relic for a random same-rarity replacement. |
@@ -95,3 +95,11 @@ Repeat producers still multiply the incoming trigger count by their existing val
 These are scoring corrections, with no changes to catalog numbers, prices, editions, or balance. Growth and cash remain tied to actual merges. Devourer's scoring passes multiply its host Echoes by each absorbed ability's own Echoes; regular physical relics count their own modifier once. Conductor retains its existing scoring-only copy behavior.
 
 Ordinary scores retain the two-field scientific save representation. Beyond the precision of a native exponent, an optional third field records the exponent layer. `eeX` means `10^(10^X)`; each additional e adds another outer power of ten. Arithmetic retains scientific precision rather than allocating score digits. Animation receipts are transient and never replay into these rules.
+
+## Huge numbers and temporary starts (1.1.2)
+
+Singularity sales apply `Ghostwriter growth ^ (1.2 * Singularity power * Ghostwriter power)`, while ordinary scoring-relic sales keep multiplying by their existing current factor. This powers the stored growth permanently; it does not turn Ghostwriter into a power-effect scoring relic. Its rarity stays Rare.
+
+Number formatting defaults to six significant digits, with higher precision available on hover. Nested e notation associates to the right: `1.23e4.56e7` means `1.23 * 10^(4.56 * 10^7)`. A leading `1e` on a layered magnitude adds an outer power of ten. The stored number representation and scoring remain independent of display precision.
+
+Only new Hollow runs receive the three-clear Perishable Avalanche. Successful results decrement its persistent lifetime once, independent of merge/retrigger count; failed results leave it alone. Expiration removes the relic without sale rewards. An inherited temporary ability keeps its remaining lifetime and expires independently of Devourer. Rebirth and other trait-preserving transformations retain that lifetime.

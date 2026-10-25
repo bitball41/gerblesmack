@@ -86,7 +86,7 @@ static func use_fracture(game, id: String, target: int = -1) -> bool:
    if pool.is_empty(): return false
    var replacement: String = game.rng.pick(pool)
    var tags: Dictionary = {}
-   for key in ["edition","cursed","echoed","echo_passes"]:
+   for key in ["edition","cursed","echoed","echo_passes","perishable_clears"]:
     if selected.has(key): tags[key]=selected[key]
    game.relics.remove_at(target)
    game._grant(replacement,tags)
@@ -200,7 +200,7 @@ static func exchange_nomad(game, index: int) -> bool:
  if pool.is_empty(): return false
  var id: String = game.rng.pick(pool)
  var tags: Dictionary = {}
- for key in ["edition","cursed","echoed","echo_passes"]:
+ for key in ["edition","cursed","echoed","echo_passes","perishable_clears"]:
   if old.has(key): tags[key]=old[key]
  game.relics.remove_at(index)
  game._grant(id,tags)

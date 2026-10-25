@@ -182,9 +182,10 @@ func _select(id: String, animate: bool = true) -> void:
   icon.mouse_filter=Control.MOUSE_FILTER_STOP
   icon.set_meta("item_id",items[index])
   var kit_id: String = items[index]
+  var kit_note: String = Game.Rules.status(preview,preview.relics[index]) if index<preview.relics.size() else "Starting kit"
   icon.mouse_entered.connect(func():
    var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
-   if host: host._show_item_preview(kit_id,"Starting kit",icon)
+   if host: host._show_item_preview(kit_id,kit_note,icon)
   )
   icon.mouse_exited.connect(func():
    var host: Node = get_tree().get_first_node_in_group("card_inspection_host")
